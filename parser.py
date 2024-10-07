@@ -18,18 +18,26 @@ with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
     writer.writeheader()
 
     # Zafiyetleri bulma
-    for vuln in soup.find_all('tr', class_='vulnerability'):
-        title = vuln.find('td', class_='title').text.strip()
-        ip_port = vuln.find('td', class_='ip-port').text.strip()
-        risk_factor = vuln.find('td', class_='risk-factor').text.strip()
-        cvss_score = vuln.find('td', class_='cvss').text.strip()
+    vulnerabilities_found = False
+    for row in soup.find_all('tr'):
+        columns = row.find_all('td')
+        
+        if len(columns) >= 4:  # Eğer yeterli sütun varsa
+            title = columns[0].get_text(strip=True)
+            ip_port = columns[1].get_text(strip=True)
+            risk_factor = columns[2].get_text(strip=True)
+            cvss_score = columns[3].get_text(strip=True)
 
-        # CSV'ye yaz
-        writer.writerow({
-            'Bulgu Başlığı': title,
-            'IP Adresi:Portu': ip_port,
-            'Risk Faktörü': risk_factor,
-            'CVSS Skoru': cvss_score
-        })
+            # CSV'ye yaz
+            writer.writerow({
+                'Bulgu Başlığı': title,
+                'IP Adresi:Portu': ip_port,
+                'Risk Faktörü': risk_factor,
+                'CVSS Skoru': cvss_score
+            })
+            vulnerabilities_found = True
 
-print(f'Rapor başarıyla {output_csv_file} dosyasına yazıldı.')
+    if vulnerabilities_found:
+        print(f'Rapor başarıyla {output_csv_file} dosyasına yazıldı.')
+    else:
+        print('Hiç zafiyet bulunamadı.')

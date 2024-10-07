@@ -23,19 +23,30 @@ with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
         columns = row.find_all('td')
         
         if len(columns) >= 4:  # Eğer yeterli sütun varsa
-            title = columns[0].get_text(strip=True)
+            # Zafiyet başlığını bulma
+            title_elem = columns[0].find(attrs={'onmouseover': True})
+            title = title_elem.get_text(strip=True) if title_elem else None
+            
+            # IP Adresi:Portu
             ip_port = columns[1].get_text(strip=True)
-            risk_factor = columns[2].get_text(strip=True)
-            cvss_score = columns[3].get_text(strip=True)
 
+            # Risk Faktörü
+            risk_factor_elem = row.find(string="Risk Factor")
+            risk_factor = risk_factor_elem.find_next('td').get_text(strip=True) if risk_factor_elem else None
+            
+            # CVSS Skoru
+            cvss_score_elem = row.find(string=["CVSS v2.0 Base Score", "CVSS v3.0 Base Score"])
+            cvss_score = cvss_score_elem.find_next('td').get_text(strip=True) if cvss_score_elem else None
+            
             # CSV'ye yaz
-            writer.writerow({
-                'Bulgu Başlığı': title,
-                'IP Adresi:Portu': ip_port,
-                'Risk Faktörü': risk_factor,
-                'CVSS Skoru': cvss_score
-            })
-            vulnerabilities_found = True
+            if title and ip_port and risk_factor and cvss_score:
+                writer.writerow({
+                    'Bulgu Başlığı': title,
+                    'IP Adresi:Portu': ip_port,
+                    'Risk Faktörü': risk_factor,
+                    'CVSS Skoru': cvss_score
+                })
+                vulnerabilities_found = True
 
     if vulnerabilities_found:
         print(f'Rapor başarıyla {output_csv_file} dosyasına yazıldı.')

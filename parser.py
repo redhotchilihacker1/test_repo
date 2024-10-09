@@ -23,33 +23,41 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Find relevant sections based on headers
-headers = soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x)
-
-# Iterate through found headers to get the corresponding data
-for header in headers:
+# Look for the relevant headers and extract data
+for header in soup.find_all('div', class_='details-header'):
     header_text = header.get_text(strip=True)
 
-    # Get the next sibling that contains the relevant data
-    data_row = header.find_next_sibling()
-    while data_row:
-        if 'Vulnerability' in header_text:
-            vulnerability = data_row.get_text(strip=True)
-            vulnerabilities.append(vulnerability)
-            break
-        elif 'Plugin Output' in header_text:
-            ip_port = data_row.get_text(strip=True)
-            ip_ports.append(ip_port)
-            break
-        elif 'Risk Factor' in header_text:
-            risk_factor = data_row.get_text(strip=True)
-            risk_factors.append(risk_factor)
-            break
-        elif 'CVSS v3.0 Base Score' in header_text:
-            cvss_score = data_row.get_text(strip=True)
-            cvss_scores.append(cvss_score)
-            break
-        data_row = data_row.find_next_sibling()  # Move to the next sibling if not found
+    if "Vulnerability" in header_text:
+        # Get the next sibling which should contain the vulnerability name
+        vulnerability_row = header.find_next('div')
+        if vulnerability_row:
+            vulnerabilities.append(vulnerability_row.get_text(strip=True))
+        else:
+            vulnerabilities.append("N/A")
+    
+    elif "Plugin Output" in header_text:
+        # Get the next sibling that contains the IP:Port info
+        plugin_output_row = header.find_next('div')
+        if plugin_output_row:
+            ip_ports.append(plugin_output_row.get_text(strip=True))
+        else:
+            ip_ports.append("N/A")
+    
+    elif "Risk Factor" in header_text:
+        # Get the risk factor information
+        risk_factor_row = header.find_next('div')
+        if risk_factor_row:
+            risk_factors.append(risk_factor_row.get_text(strip=True))
+        else:
+            risk_factors.append("N/A")
+    
+    elif "CVSS v3.0 Base Score" in header_text:
+        # Get the CVSS score
+        cvss_row = header.find_next('div')
+        if cvss_row:
+            cvss_scores.append(cvss_row.get_text(strip=True))
+        else:
+            cvss_scores.append("N/A")
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

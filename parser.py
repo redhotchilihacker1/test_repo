@@ -23,45 +23,31 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Find relevant sections based on headers
-headers = soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x)
+# Helper function to get the RGB value of an element
+def get_rgb_color(element):
+    style = element.get('style')
+    if style:
+        match = re.search(r'background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)', style)
+        if match:
+            return tuple(map(int, match.groups()))
+    return (255, 255, 255)  # Default to white if no color is found
 
-# Extract data for each section
-for header in headers:
-    header_text = header.get_text(strip=True)
+# Iterate through relevant sections to find vulnerability data
+for header in soup.find_all(['h2', 'h3', 'div']):
+    rgb_color = get_rgb_color(header)
 
-    # Vulnerability: Get the text under the heading
-    if 'Vulnerability' in header_text:
-        # Vulnerability data might be under a 'plugin-row' class or similar
-        vulnerability_data = header.find_next('div', class_='plugin-row')  # Adjust class if needed
-        if vulnerability_data:
-            vulnerabilities.append(vulnerability_data.get_text(strip=True))
-        else:
-            vulnerabilities.append("N/A")
-
-    # IP:Port data
-    elif 'Plugin Output' in header_text:
-        ip_port = header.find_next('h2')
-        if ip_port:
-            ip_ports.append(ip_port.get_text(strip=True))
-        else:
-            ip_ports.append("N/A")
-
-    # Risk Factor
-    elif 'Risk Factor' in header_text:
-        risk_factor_data = header.find_next('div', class_='plugin-row')
-        if risk_factor_data:
-            risk_factors.append(risk_factor_data.get_text(strip=True))
-        else:
-            risk_factors.append("N/A")
-
-    # CVSS Base Score
-    elif 'CVSS v3.0 Base Score' in header_text:
-        cvss_data = header.find_next('div', class_='plugin-row')
-        if cvss_data:
-            cvss_scores.append(cvss_data.get_text(strip=True))
-        else:
-            cvss_scores.append("N/A")
+    # Check if the background color is not white
+    if rgb_color != (255, 255, 255):
+        next_div = header.find_next_sibling('div')
+        if next_div:
+            if 'Vulnerability' in header.get_text(strip=True):
+                vulnerabilities.append(next_div.get_text(strip=True))
+            elif 'Plugin Output' in header.get_text(strip=True):
+                ip_ports.append(next_div.get_text(strip=True))
+            elif 'Risk Factor' in header.get_text(strip=True):
+                risk_factors.append(next_div.get_text(strip=True))
+            elif 'CVSS v3.0 Base Score' in header.get_text(strip=True):
+                cvss_scores.append(next_div.get_text(strip=True))
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

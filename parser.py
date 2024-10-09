@@ -24,31 +24,30 @@ risk_factors = []
 cvss_scores = []
 
 # Helper function to get the next sibling text
-def get_next_data(row, pattern=None):
-    sibling = row.find_next_sibling('div')
+def get_next_data(row, tag="td"):
+    sibling = row.find_next(tag)
     if sibling:
         return sibling.get_text(strip=True)
     return "N/A"
 
 # Find and extract data based on headings
-for row in soup.find_all('div', class_='details-header'):
+for row in soup.find_all('td', class_='details-header'):
     heading = row.get_text(strip=True)
     
     if "Vulnerability" in heading:
-        vulnerabilities.append(get_next_data(row))
+        # Vulnerability data should be right after the heading
+        vulnerabilities.append(get_next_data(row, "td"))
     
     elif "Plugin Output" in heading:
-        port_info = row.find_next('h2')
-        if port_info:
-            ip_ports.append(port_info.get_text(strip=True))
-        else:
-            ip_ports.append("N/A")
+        # Assuming IP:Port information is within Plugin Output's tag or below
+        port_info = get_next_data(row, "td")
+        ip_ports.append(port_info if port_info != "N/A" else "No Port Info")
 
     elif "Risk Factor" in heading:
-        risk_factors.append(get_next_data(row))
+        risk_factors.append(get_next_data(row, "td"))
 
     elif "CVSS v3.0 Base Score" in heading:
-        cvss_scores.append(get_next_data(row))
+        cvss_scores.append(get_next_data(row, "td"))
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

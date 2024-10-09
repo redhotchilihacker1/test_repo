@@ -23,36 +23,42 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Find vulnerability sections and corresponding values
-for vuln_section in soup.find_all('div', class_='plugin-row'):
-    
-    # Extract Vulnerability name
-    vulnerability = vuln_section.find('td', text=re.compile(r'Vulnerability\s*:'))
-    if vulnerability:
-        vulnerabilities.append(vulnerability.find_next('td').get_text(strip=True))
-    else:
-        vulnerabilities.append("N/A")
-    
-    # Extract IP:Port
-    ip_port = vuln_section.find('td', text=re.compile(r'IP Address\s*:'))
-    if ip_port:
-        ip_ports.append(ip_port.find_next('td').get_text(strip=True))
-    else:
-        ip_ports.append("N/A")
-    
+# Helper function to get the next sibling text
+def get_next_data(row, pattern=None):
+    sibling = row.find_next_sibling('div')
+    if sibling:
+        return sibling.get_text(strip=True)
+    return "N/A"
+
+# Extract data from 'Vulnerability' section
+for vulnerability_section in soup.find_all('div', class_='details-header'):
+    if 'Vulnerability' in vulnerability_section.get_text(strip=True):
+        vulnerability_data = vulnerability_section.find_next('div', class_='plugin-row-header')
+        if vulnerability_data:
+            vulnerabilities.append(vulnerability_data.get_text(strip=True))
+        else:
+            vulnerabilities.append("N/A")
+    # Extract IP:Port information
+    elif "Plugin Output" in vulnerability_section.get_text(strip=True):
+        port_info = vulnerability_section.find_next('h2')
+        if port_info:
+            ip_ports.append(port_info.get_text(strip=True))
+        else:
+            ip_ports.append("N/A")
     # Extract Risk Factor
-    risk_factor = vuln_section.find('td', text=re.compile(r'Risk Factor\s*:'))
-    if risk_factor:
-        risk_factors.append(risk_factor.find_next('td').get_text(strip=True))
-    else:
-        risk_factors.append("N/A")
-    
-    # Extract CVSS Score
-    cvss_score = vuln_section.find('td', text=re.compile(r'CVSS v3\.0 Base Score\s*:'))
-    if cvss_score:
-        cvss_scores.append(cvss_score.find_next('td').get_text(strip=True))
-    else:
-        cvss_scores.append("N/A")
+    elif "Risk Factor" in vulnerability_section.get_text(strip=True):
+        risk_factor_data = vulnerability_section.find_next('div', class_='plugin-row')
+        if risk_factor_data:
+            risk_factors.append(risk_factor_data.get_text(strip=True))
+        else:
+            risk_factors.append("N/A")
+    # Extract CVSS Base Score
+    elif "CVSS v3.0 Base Score" in vulnerability_section.get_text(strip=True):
+        cvss_data = vulnerability_section.find_next('div', class_='plugin-row')
+        if cvss_data:
+            cvss_scores.append(cvss_data.get_text(strip=True))
+        else:
+            cvss_scores.append("N/A")
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))
@@ -61,7 +67,7 @@ ip_ports.extend(["N/A"] * (max_len - len(ip_ports)))
 risk_factors.extend(["N/A"] * (max_len - len(risk_factors)))
 cvss_scores.extend(["N/A"] * (max_len - len(cvss_scores)))
 
-# Create a DataFrame and export to Excel and CSV
+# Create a DataFrame
 df = pd.DataFrame({
     'Vulnerability': vulnerabilities,
     'IP:Port': ip_ports,

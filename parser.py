@@ -33,13 +33,13 @@ def is_not_white_background(tag):
             return (r, g, b) != (255, 255, 255)  # Not white
     return False
 
-# Extract Vulnerability data where RGB is not white
+# Find the divs with RGB color that is not white, and extract the text after them
 for div in soup.find_all('div'):
     if is_not_white_background(div):
-        # Get the next sibling that contains the vulnerability name
-        vulnerability_name = div.find_next_sibling('div')
-        if vulnerability_name:
-            vulnerabilities.append(vulnerability_name.get_text(strip=True))
+        # Find the text between the end of this div and the next div tag
+        next_sibling = div.find_next_sibling(text=True)
+        if next_sibling and not next_sibling.isspace():
+            vulnerabilities.append(next_sibling.strip())
         else:
             vulnerabilities.append("N/A")
 

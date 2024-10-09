@@ -23,42 +23,33 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Helper function to get the next sibling text
-def get_next_data(row, pattern=None):
-    sibling = row.find_next_sibling('div')
-    if sibling:
-        return sibling.get_text(strip=True)
-    return "N/A"
+# Find relevant sections based on headers
+headers = soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x)
 
-# Extract data from 'Vulnerability' section
-for vulnerability_section in soup.find_all('div', class_='details-header'):
-    if 'Vulnerability' in vulnerability_section.get_text(strip=True):
-        vulnerability_data = vulnerability_section.find_next('div', class_='plugin-row-header')
-        if vulnerability_data:
-            vulnerabilities.append(vulnerability_data.get_text(strip=True))
-        else:
-            vulnerabilities.append("N/A")
-    # Extract IP:Port information
-    elif "Plugin Output" in vulnerability_section.get_text(strip=True):
-        port_info = vulnerability_section.find_next('h2')
-        if port_info:
-            ip_ports.append(port_info.get_text(strip=True))
-        else:
-            ip_ports.append("N/A")
-    # Extract Risk Factor
-    elif "Risk Factor" in vulnerability_section.get_text(strip=True):
-        risk_factor_data = vulnerability_section.find_next('div', class_='plugin-row')
-        if risk_factor_data:
-            risk_factors.append(risk_factor_data.get_text(strip=True))
-        else:
-            risk_factors.append("N/A")
-    # Extract CVSS Base Score
-    elif "CVSS v3.0 Base Score" in vulnerability_section.get_text(strip=True):
-        cvss_data = vulnerability_section.find_next('div', class_='plugin-row')
-        if cvss_data:
-            cvss_scores.append(cvss_data.get_text(strip=True))
-        else:
-            cvss_scores.append("N/A")
+# Iterate through found headers to get the corresponding data
+for header in headers:
+    header_text = header.get_text(strip=True)
+
+    # Get the next sibling that contains the relevant data
+    data_row = header.find_next_sibling()
+    while data_row:
+        if 'Vulnerability' in header_text:
+            vulnerability = data_row.get_text(strip=True)
+            vulnerabilities.append(vulnerability)
+            break
+        elif 'Plugin Output' in header_text:
+            ip_port = data_row.get_text(strip=True)
+            ip_ports.append(ip_port)
+            break
+        elif 'Risk Factor' in header_text:
+            risk_factor = data_row.get_text(strip=True)
+            risk_factors.append(risk_factor)
+            break
+        elif 'CVSS v3.0 Base Score' in header_text:
+            cvss_score = data_row.get_text(strip=True)
+            cvss_scores.append(cvss_score)
+            break
+        data_row = data_row.find_next_sibling()  # Move to the next sibling if not found
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

@@ -23,9 +23,6 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Find relevant sections based on headers
-headers = soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x)
-
 # Function to check if the background color is not white
 def is_not_white_background(tag):
     style = tag.get('style')
@@ -36,18 +33,23 @@ def is_not_white_background(tag):
             return (r, g, b) != (255, 255, 255)  # Not white
     return False
 
-# Iterate through found headers to get the corresponding data
-for header in headers:
-    header_text = header.get_text(strip=True)
+# Extract Vulnerability data where RGB is not white
+for div in soup.find_all('div'):
+    if is_not_white_background(div):
+        # Get the next sibling that contains the vulnerability name
+        vulnerability_name = div.find_next_sibling('div')
+        if vulnerability_name:
+            vulnerabilities.append(vulnerability_name.get_text(strip=True))
+        else:
+            vulnerabilities.append("N/A")
 
-    # Get the next sibling that contains the relevant data
+# For IP:Port, Risk Factor, CVSS, same logic as before
+for header in soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x):
+    header_text = header.get_text(strip=True)
     data_row = header.find_next_sibling()
+    
     while data_row:
-        if 'Vulnerability' in header_text and is_not_white_background(data_row):
-            vulnerability = data_row.get_text(strip=True)
-            vulnerabilities.append(vulnerability)
-            break
-        elif 'Plugin Output' in header_text:
+        if 'Plugin Output' in header_text:
             ip_port = data_row.get_text(strip=True)
             ip_ports.append(ip_port)
             break
@@ -59,7 +61,7 @@ for header in headers:
             cvss_score = data_row.get_text(strip=True)
             cvss_scores.append(cvss_score)
             break
-        data_row = data_row.find_next_sibling()  # Move to the next sibling if not found
+        data_row = data_row.find_next_sibling()
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

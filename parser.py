@@ -23,17 +23,27 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Regex pattern to match 5-digit numbers (for identifying vulnerability sections)
-vulnerability_pattern = re.compile(r'\b\d{5}\b')
+# Function to check if the background color is not white and contains a 5-digit number
+def is_valid_vulnerability_div(tag):
+    style = tag.get('style')
+    if style and 'background-color' in style:
+        match = re.search(r'background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)', style)
+        if match:
+            r, g, b = map(int, match.groups())
+            # Check if RGB is not white and if there is a 5-digit number in the tag text
+            if (r, g, b) != (255, 255, 255) and re.search(r'\d{5}', tag.get_text()):
+                return True
+    return False
 
-# Extract Vulnerability data based on the 5-digit number rule
+# Find the divs that match the condition and extract the text between them and the next div
 for div in soup.find_all('div'):
-    text = div.get_text(strip=True)
-    # If the text contains a 5-digit number, consider it as a Vulnerability entry
-    if vulnerability_pattern.search(text):
-        vulnerabilities.append(text)
-    else:
-        continue
+    if is_valid_vulnerability_div(div):
+        # Get the text between this div and the next div
+        next_sibling = div.find_next(string=True)
+        if next_sibling and not next_sibling.isspace():  # Ensure it's not empty or whitespace
+            vulnerabilities.append(next_sibling.strip())
+        else:
+            vulnerabilities.append("N/A")
 
 # For IP:Port, Risk Factor, CVSS, same logic as before
 for header in soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x):

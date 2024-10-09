@@ -23,40 +23,47 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Look for the relevant headers and extract data
-for header in soup.find_all('div', class_='details-header'):
+# Find relevant sections based on headers
+headers = soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x)
+
+# Extract data for each section
+for header in headers:
     header_text = header.get_text(strip=True)
 
-    if "Vulnerability" in header_text:
-        # Get the next sibling which should contain the vulnerability name
-        vulnerability_row = header.find_next('div')
-        if vulnerability_row:
-            vulnerabilities.append(vulnerability_row.get_text(strip=True))
+    # Vulnerability: Get the text under the heading
+    if 'Vulnerability' in header_text:
+        vulnerability_data = header.find_next('div', class_='plugin-row')
+        if vulnerability_data:
+            vulnerabilities.append(vulnerability_data.get_text(strip=True))
         else:
+            print("Warning: Vulnerability data not found after header:", header_text)
             vulnerabilities.append("N/A")
-    
-    elif "Plugin Output" in header_text:
-        # Get the next sibling that contains the IP:Port info
-        plugin_output_row = header.find_next('div')
-        if plugin_output_row:
-            ip_ports.append(plugin_output_row.get_text(strip=True))
+
+    # IP:Port data
+    elif 'Plugin Output' in header_text:
+        ip_port_data = header.find_next('h2')
+        if ip_port_data:
+            ip_ports.append(ip_port_data.get_text(strip=True))
         else:
+            print("Warning: IP:Port data not found after header:", header_text)
             ip_ports.append("N/A")
-    
-    elif "Risk Factor" in header_text:
-        # Get the risk factor information
-        risk_factor_row = header.find_next('div')
-        if risk_factor_row:
-            risk_factors.append(risk_factor_row.get_text(strip=True))
+
+    # Risk Factor
+    elif 'Risk Factor' in header_text:
+        risk_factor_data = header.find_next('div', class_='plugin-row')
+        if risk_factor_data:
+            risk_factors.append(risk_factor_data.get_text(strip=True))
         else:
+            print("Warning: Risk Factor data not found after header:", header_text)
             risk_factors.append("N/A")
-    
-    elif "CVSS v3.0 Base Score" in header_text:
-        # Get the CVSS score
-        cvss_row = header.find_next('div')
-        if cvss_row:
-            cvss_scores.append(cvss_row.get_text(strip=True))
+
+    # CVSS Base Score
+    elif 'CVSS v3.0 Base Score' in header_text:
+        cvss_data = header.find_next('div', class_='plugin-row')
+        if cvss_data:
+            cvss_scores.append(cvss_data.get_text(strip=True))
         else:
+            print("Warning: CVSS v3.0 Base Score data not found after header:", header_text)
             cvss_scores.append("N/A")
 
 # Ensure all lists are of the same length

@@ -23,25 +23,17 @@ ip_ports = []
 risk_factors = []
 cvss_scores = []
 
-# Function to check if the background color is not white
-def is_not_white_background(tag):
-    style = tag.get('style')
-    if style and 'background-color' in style:
-        match = re.search(r'background-color:\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)', style)
-        if match:
-            r, g, b = map(int, match.groups())
-            return (r, g, b) != (255, 255, 255)  # Not white
-    return False
+# Regex pattern to match 5-digit numbers (for identifying vulnerability sections)
+vulnerability_pattern = re.compile(r'\b\d{5}\b')
 
-# Find the divs with RGB color that is not white, and extract the text after them
+# Extract Vulnerability data based on the 5-digit number rule
 for div in soup.find_all('div'):
-    if is_not_white_background(div):
-        # Get the text between the end of this div and the next div tag
-        next_sibling = div.find_next(string=True)
-        if next_sibling and next_sibling.strip():  # Make sure it's not just whitespace
-            vulnerabilities.append(next_sibling.strip())
-        else:
-            vulnerabilities.append("N/A")
+    text = div.get_text(strip=True)
+    # If the text contains a 5-digit number, consider it as a Vulnerability entry
+    if vulnerability_pattern.search(text):
+        vulnerabilities.append(text)
+    else:
+        continue
 
 # For IP:Port, Risk Factor, CVSS, same logic as before
 for header in soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x):

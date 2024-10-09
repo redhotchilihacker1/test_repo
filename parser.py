@@ -19,9 +19,9 @@ soup = BeautifulSoup(html_content, 'html.parser')
 
 # Initialize lists for each column
 vulnerabilities = []
-ip_ports = []
-risk_factors = []
-cvss_scores = []
+ip_ports = []  # Predefined values for Plugin Output
+risk_factors = []  # Predefined values for Risk Factor
+cvss_scores = []  # Predefined values for CVSS v3.0 Base Score
 
 # Helper function to get the RGB value of an element
 def get_rgb_color(element):
@@ -32,22 +32,29 @@ def get_rgb_color(element):
             return tuple(map(int, match.groups()))
     return (255, 255, 255)  # Default to white if no color is found
 
+# Predefined values for the other categories
+predefined_ip_ports = "192.168.1.1:8080"  # Replace with actual value
+predefined_risk_factors = "High"  # Replace with actual value
+predefined_cvss_scores = "7.5"  # Replace with actual value
+
 # Iterate through relevant sections to find vulnerability data
 for header in soup.find_all(['h2', 'h3', 'div']):
-    rgb_color = get_rgb_color(header)
-
-    # Check if the background color is not white
-    if rgb_color != (255, 255, 255):
-        next_div = header.find_next_sibling('div')
-        if next_div:
-            if 'Vulnerability' in header.get_text(strip=True):
+    if 'Vulnerability' in header.get_text(strip=True):
+        rgb_color = get_rgb_color(header)
+        if rgb_color != (255, 255, 255):  # Check if not white
+            next_div = header.find_next_sibling('div')
+            if next_div:
                 vulnerabilities.append(next_div.get_text(strip=True))
-            elif 'Plugin Output' in header.get_text(strip=True):
-                ip_ports.append(next_div.get_text(strip=True))
-            elif 'Risk Factor' in header.get_text(strip=True):
-                risk_factors.append(next_div.get_text(strip=True))
-            elif 'CVSS v3.0 Base Score' in header.get_text(strip=True):
-                cvss_scores.append(next_div.get_text(strip=True))
+    
+    # For other fields, append the predefined values
+    elif "Plugin Output" in header.get_text(strip=True):
+        ip_ports.append(predefined_ip_ports)
+
+    elif "Risk Factor" in header.get_text(strip=True):
+        risk_factors.append(predefined_risk_factors)
+
+    elif "CVSS v3.0 Base Score" in header.get_text(strip=True):
+        cvss_scores.append(predefined_cvss_scores)
 
 # Ensure all lists are of the same length
 max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))

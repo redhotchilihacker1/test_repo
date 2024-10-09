@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 import argparse
 
 # Set up argument parser
-parser = argparse.ArgumentParser(description="Parse vulnerability data from an HTML report and export to Excel.")
+parser = argparse.ArgumentParser(description="Parse vulnerability data from an HTML report and export to Excel and CSV.")
 parser.add_argument('input_html', type=str, help="Path to the input HTML file")
-parser.add_argument('output_excel', type=str, help="Path to the output Excel file (e.g., 'output.xlsx')")
+parser.add_argument('output_file', type=str, help="Output file name (without extension)")
 
 args = parser.parse_args()
 
@@ -57,7 +57,7 @@ ip_ports.extend(["N/A"] * (max_len - len(ip_ports)))
 risk_factors.extend(["N/A"] * (max_len - len(risk_factors)))
 cvss_scores.extend(["N/A"] * (max_len - len(cvss_scores)))
 
-# Create a DataFrame and export to Excel
+# Create a DataFrame
 df = pd.DataFrame({
     'Vulnerability': vulnerabilities,
     'IP:Port': ip_ports,
@@ -65,7 +65,12 @@ df = pd.DataFrame({
     'CVSS v3.0 Base Score': cvss_scores
 })
 
-# Save the dataframe to an Excel file
-df.to_excel(args.output_excel, index=False)
+# Output file names
+output_excel = f"{args.output_file}.xlsx"
+output_csv = f"{args.output_file}.csv"
 
-print(f"Excel file has been generated successfully at {args.output_excel}.")
+# Save to Excel and CSV files
+df.to_excel(output_excel, index=False)
+df.to_csv(output_csv, index=False)
+
+print(f"Files have been generated successfully: {output_excel}, {output_csv}")

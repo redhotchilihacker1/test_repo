@@ -32,20 +32,19 @@ for header in headers:
 
     # Vulnerability: Get the text under the heading
     if 'Vulnerability' in header_text:
-        vulnerability_data = header.find_next('div', class_='plugin-row')
+        # Vulnerability data might be under a 'plugin-row' class or similar
+        vulnerability_data = header.find_next('div', class_='plugin-row')  # Adjust class if needed
         if vulnerability_data:
             vulnerabilities.append(vulnerability_data.get_text(strip=True))
         else:
-            print("Warning: Vulnerability data not found after header:", header_text)
             vulnerabilities.append("N/A")
 
     # IP:Port data
     elif 'Plugin Output' in header_text:
-        ip_port_data = header.find_next('h2')
-        if ip_port_data:
-            ip_ports.append(ip_port_data.get_text(strip=True))
+        ip_port = header.find_next('h2')
+        if ip_port:
+            ip_ports.append(ip_port.get_text(strip=True))
         else:
-            print("Warning: IP:Port data not found after header:", header_text)
             ip_ports.append("N/A")
 
     # Risk Factor
@@ -54,7 +53,6 @@ for header in headers:
         if risk_factor_data:
             risk_factors.append(risk_factor_data.get_text(strip=True))
         else:
-            print("Warning: Risk Factor data not found after header:", header_text)
             risk_factors.append("N/A")
 
     # CVSS Base Score
@@ -63,7 +61,6 @@ for header in headers:
         if cvss_data:
             cvss_scores.append(cvss_data.get_text(strip=True))
         else:
-            print("Warning: CVSS v3.0 Base Score data not found after header:", header_text)
             cvss_scores.append("N/A")
 
 # Ensure all lists are of the same length

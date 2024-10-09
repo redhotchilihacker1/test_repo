@@ -31,7 +31,7 @@ def is_valid_vulnerability_div(tag):
         if match:
             r, g, b = map(int, match.groups())
             # Check if RGB is not white and if there is a 5-digit number in the tag text
-            if (r, g, b) != (255, 255, 255) and re.search(r'\d{5}', tag.get_text()):
+            if (r, g, b) != (255, 255, 255) and re.search(r'\b\d{5}\b', tag.get_text()):
                 return True
     return False
 
@@ -39,9 +39,10 @@ def is_valid_vulnerability_div(tag):
 for div in soup.find_all('div'):
     if is_valid_vulnerability_div(div):
         # Get the text between this div and the next div
-        next_sibling = div.find_next(string=True)
-        if next_sibling and not next_sibling.isspace():  # Ensure it's not empty or whitespace
-            vulnerabilities.append(next_sibling.strip())
+        next_div = div.find_next_sibling('div')
+        if next_div:
+            vulnerability_text = next_div.get_text(strip=True)
+            vulnerabilities.append(vulnerability_text)
         else:
             vulnerabilities.append("N/A")
 

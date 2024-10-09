@@ -1,63 +1,71 @@
-import csv
+import re
+import pandas as pd
 from bs4 import BeautifulSoup
+import argparse
 
-# HTML dosyasının yolunu belirtin
-input_html_file = 'path_to_your_nessus_report.html'
-output_csv_file = 'vulnerabilities_report.csv'
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Parse vulnerability data from an HTML report and export to Excel.")
+parser.add_argument('input_html', type=str, help="Path to the input HTML file")
+parser.add_argument('output_excel', type=str, help="Path to the output Excel file (e.g., 'output.xlsx')")
 
-# HTML dosyasını okuyun
-with open(input_html_file, 'r', encoding='utf-8') as file:
-    soup = BeautifulSoup(file, 'html.parser')
+args = parser.parse_args()
 
-# CSV dosyasını yazma için hazırlayın
-with open(output_csv_file, 'w', newline='', encoding='utf-8') as csvfile:
-    fieldnames = ['Bulgu Başlığı', 'IP Adresi:Portu', 'Risk Faktörü', 'CVSS Skoru']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+# Load HTML file
+with open(args.input_html, 'r', encoding='utf-8') as file:
+    html_content = file.read()
 
-    # CSV başlıklarını yaz
-    writer.writeheader()
+# Parse HTML with BeautifulSoup
+soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Zafiyetleri bulma
-    vulnerabilities_found = False
-    for row in soup.find_all('tr'):
-        columns = row.find_all('td')
+# Initialize lists for each column
+vulnerabilities = []
+ip_ports = []
+risk_factors = []
+cvss_scores = []
 
-        if len(columns) >= 4:  # Eğer yeterli sütun varsa
-            # Zafiyet başlığını bulma
-            title_elem = columns[0].find(attrs={'onmouseover': True})
-            title = title_elem.get_text(strip=True) if title_elem else None
-            
-            # IP Adresi:Portu
-            ip_port = columns[1].get_text(strip=True)
+# Helper function to get the next sibling text
+def get_next_data(row, pattern=None):
+    sibling = row.find_next_sibling('div')
+    if sibling:
+        return sibling.get_text(strip=True)
+    return "N/A"
 
-            # Risk Faktörü
-            risk_factor_elem = row.find(string="Risk Factor")
-            if risk_factor_elem:
-                risk_factor = risk_factor_elem.find_next('td').get_text(strip=True)
-            else:
-                risk_factor = None
-            
-            # CVSS Skoru
-            cvss_score_elem_v2 = row.find(string="CVSS v2.0 Base Score")
-            cvss_score_elem_v3 = row.find(string="CVSS v3.0 Base Score")
+# Find and extract data based on headings
+for row in soup.find_all('div', class_='details-header'):
+    heading = row.get_text(strip=True)
+    
+    if "Vulnerability" in heading:
+        vulnerabilities.append(get_next_data(row))
+    
+    elif "Plugin Output" in heading:
+        port_info = row.find_next('h2')
+        if port_info:
+            ip_ports.append(port_info.get_text(strip=True))
+        else:
+            ip_ports.append("N/A")
 
-            cvss_score = None
-            if cvss_score_elem_v2:
-                cvss_score = cvss_score_elem_v2.find_next('td').get_text(strip=True)
-            elif cvss_score_elem_v3:
-                cvss_score = cvss_score_elem_v3.find_next('td').get_text(strip=True)
+    elif "Risk Factor" in heading:
+        risk_factors.append(get_next_data(row))
 
-            # CSV'ye yaz
-            if title and ip_port and risk_factor and cvss_score:
-                writer.writerow({
-                    'Bulgu Başlığı': title,
-                    'IP Adresi:Portu': ip_port,
-                    'Risk Faktörü': risk_factor,
-                    'CVSS Skoru': cvss_score
-                })
-                vulnerabilities_found = True
+    elif "CVSS v3.0 Base Score" in heading:
+        cvss_scores.append(get_next_data(row))
 
-    if vulnerabilities_found:
-        print(f'Rapor başarıyla {output_csv_file} dosyasına yazıldı.')
-    else:
-        print('Hiç zafiyet bulunamadı.')
+# Ensure all lists are of the same length
+max_len = max(len(vulnerabilities), len(ip_ports), len(risk_factors), len(cvss_scores))
+vulnerabilities.extend(["N/A"] * (max_len - len(vulnerabilities)))
+ip_ports.extend(["N/A"] * (max_len - len(ip_ports)))
+risk_factors.extend(["N/A"] * (max_len - len(risk_factors)))
+cvss_scores.extend(["N/A"] * (max_len - len(cvss_scores)))
+
+# Create a DataFrame and export to Excel
+df = pd.DataFrame({
+    'Vulnerability': vulnerabilities,
+    'IP:Port': ip_ports,
+    'Risk Factor': risk_factors,
+    'CVSS v3.0 Base Score': cvss_scores
+})
+
+# Save the dataframe to an Excel file
+df.to_excel(args.output_excel, index=False)
+
+print(f"Excel file has been generated successfully at {args.output_excel}.")

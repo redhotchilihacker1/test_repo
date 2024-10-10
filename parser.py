@@ -1,8 +1,14 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
+import sys
 
-# Dosya yolu
-nessus_file = '/mnt/data/test2_byjya2.nessus'
+# Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
+if len(sys.argv) != 3:
+    print("Kullanım: python script.py <input.nessus> <output_filename>")
+    sys.exit(1)
+
+nessus_file = sys.argv[1]
+output_filename = sys.argv[2]
 
 # Nessus dosyasını XML olarak yükle
 tree = ET.parse(nessus_file)
@@ -45,11 +51,11 @@ for report_host in root.findall(".//ReportHost"):
 df = pd.DataFrame(data)
 
 # CSV olarak kaydet
-csv_output = '/mnt/data/nessus_report.csv'
+csv_output = f'{output_filename}.csv'
 df.to_csv(csv_output, index=False)
 
 # XLSX olarak kaydet
-xlsx_output = '/mnt/data/nessus_report.xlsx'
+xlsx_output = f'{output_filename}.xlsx'
 df.to_excel(xlsx_output, index=False)
 
 print(f"CSV kaydedildi: {csv_output}")

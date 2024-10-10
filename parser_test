@@ -49,20 +49,21 @@ for div in soup.find_all('div'):
         if re.match(r'^\d{5}', text):
             vulnerabilities.append(text)
 
-# New fields for DNS Name, Synopsis, Description, See Also, Solution
-def extract_text_after_header(header):
-    header_tag = soup.find(text=re.compile(header))
-    if header_tag:
-        next_sibling = header_tag.find_next('div')
-        if next_sibling:
-            return next_sibling.get_text(strip=True)
+# Function to extract cleartext after a specific header
+def extract_text_after_div(header_text):
+    for div in soup.find_all('div'):
+        if header_text in div.get_text(strip=True):
+            next_sibling = div.find_next_sibling('div')
+            if next_sibling:
+                return next_sibling.get_text(strip=True)
     return "N/A"
 
-dns_names.append(extract_text_after_header("DNS Name"))
-synopsis_list.append(extract_text_after_header("Synopsis"))
-description_list.append(extract_text_after_header("Description"))
-see_also_list.append(extract_text_after_header("See Also"))
-solution_list.append(extract_text_after_header("Solution"))
+# Extract values for DNS Name, Synopsis, Description, See Also, Solution
+dns_names.append(extract_text_after_div("DNS Name"))
+synopsis_list.append(extract_text_after_div("Synopsis"))
+description_list.append(extract_text_after_div("Description"))
+see_also_list.append(extract_text_after_div("See Also"))
+solution_list.append(extract_text_after_div("Solution"))
 
 # For IP:Port, Risk Factor, CVSS, same logic as before
 for header in soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x):

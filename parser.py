@@ -37,7 +37,7 @@ def is_not_white_background(tag):
 for div in soup.find_all('div'):
     if is_not_white_background(div):
         # Check the next sibling for cleartext starting with a 5-digit number
-        next_text = div.find_next_sibling(string=True)
+        next_text = div.find_next(string=True)
         if next_text and next_text.strip() and re.match(r'^\d{5}', next_text):
             vulnerabilities.append(next_text.strip())
 

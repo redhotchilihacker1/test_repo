@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
+from bs4 import BeautifulSoup
 import sys
-import re
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:
@@ -11,35 +11,31 @@ if len(sys.argv) != 3:
 nessus_file = sys.argv[1]
 output_filename = sys.argv[2]
 
-# XML dosyasını temizleme
+# Nessus dosyasını yükle ve BeautifulSoup ile ayrıştır
 with open(nessus_file, 'r', encoding='utf-8') as file:
-    xml_content = file.read()
-    # Hatalı HTML etiketlerini temizle
-    clean_content = re.sub(r'<[^>]*>', lambda m: m.group(0) if m.group(0).startswith('<![CDATA[') else '', xml_content)
-
-# Nessus dosyasını XML olarak yükle
-root = ET.fromstring(clean_content)
+    content = file.read()
+    soup = BeautifulSoup(content, 'xml')  # XML olarak ayrıştır
 
 # Verileri tutmak için listeler
 data = []
 
 # Nessus dosyasındaki her host'u işle
-for report_host in root.findall(".//ReportHost"):
-    dns_name = report_host.attrib.get('name')
+for report_host in soup.find_all("ReportHost"):
+    dns_name = report_host.get('name')
     ip_address = None
     
-    for tag in report_host.findall("HostProperties/tag"):
-        if tag.attrib.get('name') == 'host-ip':
+    for tag in report_host.find_all("tag"):
+        if tag.get('name') == 'host-ip':
             ip_address = tag.text
     
     # Her host'un zafiyetlerini bul
-    for report_item in report_host.findall("ReportItem"):
-        plugin_name = report_item.attrib.get('pluginName', 'N/A')
-        synopsis = report_item.findtext('synopsis', 'N/A')
-        description = report_item.findtext('description', 'N/A')
-        see_also = report_item.findtext('see_also', 'N/A')
-        solution = report_item.findtext('solution', 'N/A')
-        risk_factor = report_item.findtext('risk_factor', 'N/A')
+    for report_item in report_host.find_all("ReportItem"):
+        plugin_name = report_item.get('pluginName', 'N/A')
+        synopsis = report_item.find('synopsis').text if report_item.find('synopsis') else 'N/A'
+        description = report_item.find('description').text if report_item.find('description') else 'N/A'
+        see_also = report_item.find('see_also').text if report_item.find('see_also') else 'N/A'
+        solution = report_item.find('solution').text if report_item.find('solution') else 'N/A'
+        risk_factor = report_item.find('risk_factor').text if report_item.find('risk_factor') else 'N/A'
         
         # Verileri bir satır olarak kaydet
         data.append({

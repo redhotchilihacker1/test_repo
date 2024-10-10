@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
 import sys
+import re
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:
@@ -10,9 +11,14 @@ if len(sys.argv) != 3:
 nessus_file = sys.argv[1]
 output_filename = sys.argv[2]
 
+# XML dosyasını temizleme
+with open(nessus_file, 'r', encoding='utf-8') as file:
+    xml_content = file.read()
+    # Hatalı HTML etiketlerini temizle
+    clean_content = re.sub(r'<[^>]*>', lambda m: m.group(0) if m.group(0).startswith('<![CDATA[') else '', xml_content)
+
 # Nessus dosyasını XML olarak yükle
-tree = ET.parse(nessus_file)
-root = tree.getroot()
+root = ET.fromstring(clean_content)
 
 # Verileri tutmak için listeler
 data = []

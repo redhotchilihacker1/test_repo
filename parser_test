@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Font
+from bs4 import BeautifulSoup
 import sys
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
@@ -12,30 +11,31 @@ if len(sys.argv) != 3:
 nessus_file = sys.argv[1]
 output_filename = sys.argv[2]
 
-# Nessus dosyasını XML olarak yükle
-tree = ET.parse(nessus_file)
-root = tree.getroot()
+# Nessus dosyasını yükle ve BeautifulSoup ile ayrıştır
+with open(nessus_file, 'r', encoding='utf-8') as file:
+    content = file.read()
+    soup = BeautifulSoup(content, 'xml')  # XML olarak ayrıştır
 
 # Verileri tutmak için listeler
 data = []
 
 # Nessus dosyasındaki her host'u işle
-for report_host in root.findall(".//ReportHost"):
-    dns_name = report_host.attrib.get('name')
+for report_host in soup.find_all("ReportHost"):
+    dns_name = report_host.get('name')
     ip_address = None
     
-    for tag in report_host.findall("HostProperties/tag"):
-        if tag.attrib.get('name') == 'host-ip':
+    for tag in report_host.find_all("tag"):
+        if tag.get('name') == 'host-ip':
             ip_address = tag.text
     
     # Her host'un zafiyetlerini bul
-    for report_item in report_host.findall("ReportItem"):
-        plugin_name = report_item.attrib.get('pluginName', 'N/A')
-        synopsis = report_item.findtext('synopsis', 'N/A')
-        description = report_item.findtext('description', 'N/A')
-        see_also = report_item.findtext('see_also', 'N/A')
-        solution = report_item.findtext('solution', 'N/A')
-        risk_factor = report_item.findtext('risk_factor', 'N/A')
+    for report_item in report_host.find_all("ReportItem"):
+        plugin_name = report_item.get('pluginName', 'N/A')
+        synopsis = report_item.find('synopsis').text if report_item.find('synopsis') else 'N/A'
+        description = report_item.find('description').text if report_item.find('description') else 'N/A'
+        see_also = report_item.find('see_also').text if report_item.find('see_also') else 'N/A'
+        solution = report_item.find('solution').text if report_item.find('solution') else 'N/A'
+        risk_factor = report_item.find('risk_factor').text if report_item.find('risk_factor') else 'N/A'
         
         # Verileri bir satır olarak kaydet
         data.append({
@@ -60,38 +60,5 @@ df.to_csv(csv_output, index=False)
 xlsx_output = f'{output_filename}.xlsx'
 df.to_excel(xlsx_output, index=False)
 
-# Excel dosyasını aç ve estetik ayarlamalar yap
-wb = load_workbook(xlsx_output)
-ws = wb.active
-
-# Sütun genişliklerini otomatik olarak ayarla
-for column in ws.columns:
-    max_length = 0
-    column_letter = column[0].column_letter  # Sütun harfini al
-    for cell in column:
-        try:
-            if len(str(cell.value)) > max_length:
-                max_length = len(str(cell.value))
-        except:
-            pass
-    adjusted_width = (max_length + 2)
-    ws.column_dimensions[column_letter].width = adjusted_width
-
-# Başlıkları kalın yap ve hizala
-header_font = Font(bold=True)
-alignment = Alignment(horizontal="center", vertical="center")
-
-for cell in ws[1]:  # İlk satırdaki başlıklar
-    cell.font = header_font
-    cell.alignment = alignment
-
-# Verileri ortala
-for row in ws.iter_rows(min_row=2):  # Başlıkları hariç tut
-    for cell in row:
-        cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-# Düzenlenmiş XLSX dosyasını kaydet
-wb.save(xlsx_output)
-
 print(f"CSV kaydedildi: {csv_output}")
-print(f"Düzenlenmiş XLSX kaydedildi: {xlsx_output}")
+print(f"XLSX kaydedildi: {xlsx_output}")

@@ -1,3 +1,4 @@
+import xml.etree.ElementTree as ET
 import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -12,11 +13,52 @@ if len(sys.argv) != 3:
 nessus_file = sys.argv[1]
 output_filename = sys.argv[2]
 
-# Verileri pandas ile yükle
-df = pd.read_excel(f'{output_filename}.xlsx')
+# Nessus dosyasını XML olarak yükle
+tree = ET.parse(nessus_file)
+root = tree.getroot()
 
-# Yeni excel dosyasını openpyxl ile aç
-wb = load_workbook(f'{output_filename}.xlsx')
+# Verileri tutmak için listeler
+data = []
+
+# Nessus dosyasındaki her host'u işle
+for report_host in root.findall(".//ReportHost"):
+    dns_name = report_host.attrib.get('name')
+    ip_address = None
+    
+    for tag in report_host.findall("HostProperties/tag"):
+        if tag.attrib.get('name') == 'host-ip':
+            ip_address = tag.text
+    
+    # Her host'un zafiyetlerini bul
+    for report_item in report_host.findall("ReportItem"):
+        plugin_name = report_item.attrib.get('pluginName', 'N/A')
+        synopsis = report_item.findtext('synopsis', 'N/A')
+        description = report_item.findtext('description', 'N/A')
+        see_also = report_item.findtext('see_also', 'N/A')
+        solution = report_item.findtext('solution', 'N/A')
+        risk_factor = report_item.findtext('risk_factor', 'N/A')
+        
+        # Verileri bir satır olarak kaydet
+        data.append({
+            'DNS Name': dns_name,
+            'IP': ip_address,
+            'Vulnerability': plugin_name,
+            'Synopsis': synopsis,
+            'Description': description,
+            'References': see_also,
+            'Solution': solution,
+            'Risk Factor': risk_factor
+        })
+
+# Verileri pandas DataFrame'e dönüştür
+df = pd.DataFrame(data)
+
+# İlk olarak XLSX dosyasını pandas ile kaydet
+xlsx_output = f'{output_filename}.xlsx'
+df.to_excel(xlsx_output, index=False)
+
+# Şimdi openpyxl ile düzenleme yapacağız
+wb = load_workbook(xlsx_output)
 ws = wb.active
 
 # Başlıkları kalın ve ortalı yap

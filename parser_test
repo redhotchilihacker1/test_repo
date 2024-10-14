@@ -36,15 +36,13 @@ for report_host in soup.find_all("ReportHost"):
         see_also = report_item.find('see_also').text if report_item.find('see_also') else 'N/A'
         solution = report_item.find('solution').text if report_item.find('solution') else 'N/A'
         risk_factor = report_item.find('risk_factor').text if report_item.find('risk_factor') else 'N/A'
-
-        # Port, Service, Protocol bilgilerini al
+        
+        # Port/Service/Protocol değerlerini al
         port = report_item.get('port', 'N/A')
         svc_name = report_item.get('svc_name', 'N/A')
         protocol = report_item.get('protocol', 'N/A')
-
-        # CVSS vektör bilgisini al
-        cvss_vector = report_item.find('cvss3_vector').text if report_item.find('cvss3_vector') else 'N/A'
-
+        cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
+        
         # Verileri bir satır olarak kaydet
         data.append({
             'DNS Name': dns_name,
@@ -55,27 +53,22 @@ for report_host in soup.find_all("ReportHost"):
             'References': see_also,
             'Solution': solution,
             'Risk Factor': risk_factor,
-            'Port/Service/Protocol': f"{port}/{svc_name}/{protocol}",
+            'Port': port,
+            'Service': svc_name,
+            'Protocol': protocol,
             'CVSS': cvss_vector
         })
 
 # Verileri pandas DataFrame'e dönüştür
 df = pd.DataFrame(data)
 
-# DataFrame'in yapısını kontrol etmek için çıktısını yazdıralım
-print(df.head())  # İlk birkaç satırı yazdır
-
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'
 df.to_csv(csv_output, index=False)
-print(f"CSV başarıyla kaydedildi: {csv_output}")
 
 # XLSX olarak kaydet
 xlsx_output = f'{output_filename}.xlsx'
+df.to_excel(xlsx_output, index=False)
 
-# Verileri doğrudan yazdır
-with pd.ExcelWriter(xlsx_output, engine='xlsxwriter') as writer:
-    df.to_excel(writer, index=False, sheet_name='Vulnerabilities')
-    writer.save()  # Dosyayı kaydet
-
-print(f"XLSX başarıyla kaydedildi: {xlsx_output}")
+print(f"CSV kaydedildi: {csv_output}")
+print(f"XLSX kaydedildi: {xlsx_output}")

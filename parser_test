@@ -19,6 +19,15 @@ with open(nessus_file, 'r', encoding='utf-8') as file:
 # Verileri tutmak için listeler
 data = []
 
+# Risk Factor önceliklerini tanımla
+risk_order = {
+    "Critical": 1,
+    "High": 2,
+    "Medium": 3,
+    "Low": 4,
+    "None": 5  # "None" olanları en sona eklemek için
+}
+
 # Nessus dosyasındaki her host'u işle
 for report_host in soup.find_all("ReportHost"):
     dns_name = report_host.get('name')
@@ -36,25 +45,26 @@ for report_host in soup.find_all("ReportHost"):
         see_also = report_item.find('see_also').text if report_item.find('see_also') else 'N/A'
         solution = report_item.find('solution').text if report_item.find('solution') else 'N/A'
         risk_factor = report_item.find('risk_factor').text if report_item.find('risk_factor') else 'N/A'
-
-        # Risk Factor 'None' ise bu zafiyeti atla
-        if risk_factor == 'None':
+        
+        # Risk Factor "None" ise bu satırı atla
+        if risk_factor == "None":
             continue
         
-        # Port, Service, Protocol verilerini ekle
-        port = report_item.get('port', '0')
+        # Port/Service/Protocol değerlerini al
+        port = report_item.get('port', 'N/A')
         svc_name = report_item.get('svc_name', 'N/A')
         protocol = report_item.get('protocol', 'N/A')
         
-        # Port 0 ise 'N/A' olarak ayarla
+        # Port 0 ise N/A olarak ayarla
         if port == '0':
-            port_service_protocol = 'N/A'
-        else:
-            port_service_protocol = f'{port}/{svc_name}/{protocol}'
-
-        # CVSS3 Vector'ü ekle
-        cvss3_vector = report_item.get('cvss3_vector', 'N/A')
-
+            port = 'N/A'
+        
+        # Birleştir ve formata uygun hale getir
+        port_service_protocol = f"{port}/{svc_name}/{protocol}"
+        
+        # CVSS değerini al
+        cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
+        
         # Verileri bir satır olarak kaydet
         data.append({
             'DNS Name': dns_name,
@@ -66,16 +76,15 @@ for report_host in soup.find_all("ReportHost"):
             'Solution': solution,
             'Risk Factor': risk_factor,
             'Port/Service/Protocol': port_service_protocol,
-            'CVSS3 Vector': cvss3_vector  # CVSS3 vektörü tabloya ekleniyor
+            'CVSS': cvss_vector
         })
 
 # Verileri pandas DataFrame'e dönüştür
 df = pd.DataFrame(data)
 
-# Bulguları Risk Factor'a göre Critical, High, Medium, Low sıralamasına göre sıralayın
-risk_factor_order = {'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4}
-df['Risk Order'] = df['Risk Factor'].map(risk_factor_order)
-df = df.sort_values('Risk Order').drop('Risk Order', axis=1)
+# Risk Factor'e göre sıralama yap
+df['Risk Factor Order'] = df['Risk Factor'].map(risk_order)
+df = df.sort_values(by='Risk Factor Order').drop(columns='Risk Factor Order')
 
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'

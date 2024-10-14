@@ -42,12 +42,8 @@ for report_host in soup.find_all("ReportHost"):
         svc_name = report_item.get('svc_name', 'N/A')
         protocol = report_item.get('protocol', 'N/A')
 
-        # Verileri kontrol et
-        print(f"Port: {port}, Service: {svc_name}, Protocol: {protocol}")
-        
         # CVSS vektör bilgisini al
         cvss_vector = report_item.find('cvss3_vector').text if report_item.find('cvss3_vector') else 'N/A'
-        print(f"CVSS Vector: {cvss_vector}")
 
         # Verileri bir satır olarak kaydet
         data.append({
@@ -66,11 +62,14 @@ for report_host in soup.find_all("ReportHost"):
 # Verileri pandas DataFrame'e dönüştür
 df = pd.DataFrame(data)
 
+# DataFrame'in yapısını kontrol etmek için çıktısını yazdıralım
+print(df.head())  # İlk birkaç satırı yazdır
+
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'
 df.to_csv(csv_output, index=False)
 
-# XLSX olarak kaydet
+# XLSX olarak kaydet ve yazma işlemi sonrası çıktı verelim
 xlsx_output = f'{output_filename}.xlsx'
 df.to_excel(xlsx_output, index=False)
 

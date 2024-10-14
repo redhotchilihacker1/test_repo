@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 from bs4 import BeautifulSoup
 import sys
+from cvss import CVSS  # CVSS hesaplamak için kütüphane
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:
@@ -65,6 +66,9 @@ for report_host in soup.find_all("ReportHost"):
         # CVSS değerini al
         cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
         
+        # CVSS puanını hesapla
+        cvss_score = CVSS(cvss_vector).base_score if cvss_vector != 'N/A' else 'N/A'
+        
         # Verileri bir satır olarak kaydet
         data.append({
             'DNS Name': dns_name,
@@ -76,7 +80,8 @@ for report_host in soup.find_all("ReportHost"):
             'Solution': solution,
             'Risk Factor': risk_factor,
             'Port/Service/Protocol': port_service_protocol,
-            'CVSS': cvss_vector
+            'CVSS Vector': cvss_vector,
+            'CVSS Score': cvss_score
         })
 
 # Verileri pandas DataFrame'e dönüştür

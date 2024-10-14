@@ -70,10 +70,12 @@ csv_output = f'{output_filename}.csv'
 df.to_csv(csv_output, index=False)
 print(f"CSV başarıyla kaydedildi: {csv_output}")
 
-# XLSX olarak kaydet ve yazma işlemi sonrası çıktı verelim
+# XLSX olarak kaydet
 xlsx_output = f'{output_filename}.xlsx'
-try:
-    df.to_excel(xlsx_output, index=False)
-    print(f"XLSX başarıyla kaydedildi: {xlsx_output}")
-except Exception as e:
-    print(f"XLSX kaydetme sırasında hata: {e}")
+
+# Verileri doğrudan yazdır
+with pd.ExcelWriter(xlsx_output, engine='xlsxwriter') as writer:
+    df.to_excel(writer, index=False, sheet_name='Vulnerabilities')
+    writer.save()  # Dosyayı kaydet
+
+print(f"XLSX başarıyla kaydedildi: {xlsx_output}")

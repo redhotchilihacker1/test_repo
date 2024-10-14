@@ -52,6 +52,9 @@ for report_host in soup.find_all("ReportHost"):
         else:
             port_service_protocol = f'{port}/{svc_name}/{protocol}'
 
+        # CVSS3 Vector'ü ekle
+        cvss3_vector = report_item.get('cvss3_vector', 'N/A')
+
         # Verileri bir satır olarak kaydet
         data.append({
             'DNS Name': dns_name,
@@ -62,7 +65,8 @@ for report_host in soup.find_all("ReportHost"):
             'References': see_also,
             'Solution': solution,
             'Risk Factor': risk_factor,
-            'Port/Service/Protocol': port_service_protocol
+            'Port/Service/Protocol': port_service_protocol,
+            'CVSS3 Vector': cvss3_vector  # CVSS3 vektörü tabloya ekleniyor
         })
 
 # Verileri pandas DataFrame'e dönüştür

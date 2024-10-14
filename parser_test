@@ -69,14 +69,14 @@ for report_host in soup.find_all("ReportHost"):
         data.append({
             'DNS Name': dns_name,
             'IP': ip_address,
+            'Risk Factor': risk_factor,
             'Vulnerability': plugin_name,
+            'Port/Service/Protocol': port_service_protocol,
+            'CVSS': cvss_vector,
             'Synopsis': synopsis,
             'Description': description,
             'References': see_also,
-            'Solution': solution,
-            'Risk Factor': risk_factor,
-            'Port/Service/Protocol': port_service_protocol,
-            'CVSS': cvss_vector
+            'Solution': solution
         })
 
 # Verileri pandas DataFrame'e dönüştür
@@ -85,6 +85,9 @@ df = pd.DataFrame(data)
 # Risk Factor'e göre sıralama yap
 df['Risk Factor Order'] = df['Risk Factor'].map(risk_order)
 df = df.sort_values(by='Risk Factor Order').drop(columns='Risk Factor Order')
+
+# İstenen başlık sırasını koru
+df = df[['DNS Name', 'IP', 'Risk Factor', 'Vulnerability', 'Port/Service/Protocol', 'CVSS', 'Synopsis', 'Description', 'References', 'Solution']]
 
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'

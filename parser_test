@@ -19,16 +19,19 @@ def calculate_cvss_v3_score(cvss_vector):
     
     # CVSS vektörünü kontrol et
     if not cvss_vector or not cvss_vector.startswith("CVSS:3.0"):
+        print(f"Geçersiz CVSS vektörü: {cvss_vector}")
         return "N/A"  # Geçersiz vektör
 
-    components = cvss_vector[8:].split('/')
-    
-    # Beklenen 8 bileşen olup olmadığını kontrol et
-    if len(components) < 8:
-        return "N/A"  # Eksik bileşenler varsa geçersiz vektör
-    
     try:
-        # Bileşenleri al
+        # Vektörü böl ve bileşenleri ayıkla
+        components = cvss_vector[8:].split('/')
+        print(f"Bölünen bileşenler: {components}")  # Hata ayıklama için bileşenleri yazdır
+        
+        # Beklenen 8 bileşen olup olmadığını kontrol et
+        if len(components) < 8:
+            print(f"Yetersiz bileşen sayısı: {len(components)}")
+            return "N/A"  # Eksik bileşenler varsa geçersiz vektör
+        
         av = components[0].split(':')[1]
         ac = components[1].split(':')[1]
         pr = components[2].split(':')[1]
@@ -67,6 +70,11 @@ def calculate_cvss_v3_score(cvss_vector):
     except KeyError as e:
         print(f"KeyError: {e} - Geçersiz CVSS bileşeni: {cvss_vector}")
         return "N/A"
+
+    except IndexError as e:
+        print(f"IndexError: {e} - Bileşenlerde hata: {cvss_vector}")
+        return "N/A"
+
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:

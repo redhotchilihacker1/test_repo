@@ -4,38 +4,38 @@ from bs4 import BeautifulSoup
 import sys
 
 # CVSS puanını hesaplamak için fonksiyon
-def calculate_cvss_v3_score(cvss_vector):
-    # CVSS v3.0 bileşenlerinin varsayılan değerleri
+def calculate_cvss_v2_score(cvss_vector):
+    # CVSS v2.0 bileşenlerinin varsayılan değerleri
     metrics = {
-        'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55, 'P': 0.2},
+        'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55},
         'AC': {'L': 0.77, 'H': 0.44},
-        'PR': {'N': 0.85, 'L': 0.62, 'H': 0.27},
-        'UI': {'N': 0.85, 'R': 0.62},
-        'S': {'U': 1.0, 'C': 1.1},
-        'C': {'N': 0.0, 'L': 0.22, 'H': 0.56},
-        'I': {'N': 0.0, 'L': 0.22, 'H': 0.56},
-        'A': {'N': 0.0, 'L': 0.22, 'H': 0.56}
+        'Au': {'N': 0.85, 'S': 0.56},
+        'C': {'N': 0.0, 'P': 0.5, 'C': 1.0},
+        'I': {'N': 0.0, 'P': 0.5, 'C': 1.0},
+        'A': {'N': 0.0, 'P': 0.5, 'C': 1.0}
     }
     
     # CVSS vektörünü parçala
-    components = cvss_vector.split('/')
-    if len(components) < 8:
+    if not cvss_vector.startswith("CVSS2#"):
+        return "N/A"  # Geçersiz vektör
+
+    components = cvss_vector[6:].split('/')
+    
+    if len(components) < 6:
         return "N/A"  # Geçersiz vektör
 
     # Bileşenleri al
     av = components[0].split(':')[1]
     ac = components[1].split(':')[1]
-    pr = components[2].split(':')[1]
-    ui = components[3].split(':')[1]
-    s = components[4].split(':')[1]
-    c = components[5].split(':')[1]
-    i = components[6].split(':')[1]
-    a = components[7].split(':')[1]
+    au = components[2].split(':')[1]
+    c = components[3].split(':')[1]
+    i = components[4].split(':')[1]
+    a = components[5].split(':')[1]
 
     # Hesapla
     base_score = round(
-        (0.6 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['PR'][pr] + metrics['UI'][ui]) +
-        0.4 * (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) - 1.5) * metrics['S'][s],
+        (0.5 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['Au'][au]) +
+        (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) * 0.5),
         1
     )
     return min(max(base_score, 0), 10)  # Puanı 0-10 arasında sınırlı tut
@@ -103,10 +103,7 @@ for report_host in soup.find_all("ReportHost"):
         cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
         
         # CVSS puanını hesapla
-        if 'cvss3' in cvss_vector.lower():
-            cvss_score = calculate_cvss_v3_score(cvss_vector) if cvss_vector != 'N/A' else 'N/A'
-        else:
-            cvss_score = 'N/A'  # Sadece cvss3 değerlerini değerlendir
+        cvss_score = calculate_cvss_v2_score(cvss_vector) if 'CVSS2#' in cvss_vector else 'N/A'
         
         # Verileri bir satır olarak kaydet
         data.append({

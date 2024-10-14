@@ -68,10 +68,12 @@ print(df.head())  # İlk birkaç satırı yazdır
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'
 df.to_csv(csv_output, index=False)
+print(f"CSV başarıyla kaydedildi: {csv_output}")
 
 # XLSX olarak kaydet ve yazma işlemi sonrası çıktı verelim
 xlsx_output = f'{output_filename}.xlsx'
-df.to_excel(xlsx_output, index=False)
-
-print(f"CSV kaydedildi: {csv_output}")
-print(f"XLSX kaydedildi: {xlsx_output}")
+try:
+    df.to_excel(xlsx_output, index=False)
+    print(f"XLSX başarıyla kaydedildi: {xlsx_output}")
+except Exception as e:
+    print(f"XLSX kaydetme sırasında hata: {e}")

@@ -41,6 +41,15 @@ for report_host in soup.find_all("ReportHost"):
         port = report_item.get('port', 'N/A')
         svc_name = report_item.get('svc_name', 'N/A')
         protocol = report_item.get('protocol', 'N/A')
+        
+        # Port 0 ise N/A olarak ayarla
+        if port == '0':
+            port = 'N/A'
+        
+        # Birleştir ve formata uygun hale getir
+        port_service_protocol = f"{port}/{svc_name}/{protocol}"
+        
+        # CVSS değerini al
         cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
         
         # Verileri bir satır olarak kaydet
@@ -53,9 +62,7 @@ for report_host in soup.find_all("ReportHost"):
             'References': see_also,
             'Solution': solution,
             'Risk Factor': risk_factor,
-            'Port': port,
-            'Service': svc_name,
-            'Protocol': protocol,
+            'Port/Service/Protocol': port_service_protocol,
             'CVSS': cvss_vector
         })
 

@@ -37,6 +37,10 @@ for report_host in soup.find_all("ReportHost"):
         solution = report_item.find('solution').text if report_item.find('solution') else 'N/A'
         risk_factor = report_item.find('risk_factor').text if report_item.find('risk_factor') else 'N/A'
         
+        # Risk Factor "None" ise bu satırı atla
+        if risk_factor == "None":
+            continue
+        
         # Port/Service/Protocol değerlerini al
         port = report_item.get('port', 'N/A')
         svc_name = report_item.get('svc_name', 'N/A')

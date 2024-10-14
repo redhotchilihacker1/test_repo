@@ -11,32 +11,33 @@ def calculate_cvss_v3_score(cvss_vector):
         'AC': {'L': 0.77, 'H': 0.44},
         'PR': {'N': 0.85, 'L': 0.62, 'H': 0.27},
         'UI': {'N': 0.85, 'R': 0.62},
-        'S': {'U': 1.0, 'C': 1.5},  # Scope Unchanged (U) or Changed (C)
+        'S': {'U': 1.0, 'C': 1.5},
         'C': {'N': 0.0, 'L': 0.22, 'H': 0.56},
         'I': {'N': 0.0, 'L': 0.22, 'H': 0.56},
         'A': {'N': 0.0, 'L': 0.22, 'H': 0.56}
     }
     
-    # CVSS vektörünü parçala
-    if not cvss_vector.startswith("CVSS:3.0"):
+    # CVSS vektörünü kontrol et
+    if not cvss_vector or not cvss_vector.startswith("CVSS:3.0"):
         return "N/A"  # Geçersiz vektör
 
     components = cvss_vector[8:].split('/')
     
+    # Beklenen 8 bileşen olup olmadığını kontrol et
     if len(components) < 8:
-        return "N/A"  # Geçersiz vektör
-
-    # Bileşenleri al
-    av = components[0].split(':')[1]
-    ac = components[1].split(':')[1]
-    pr = components[2].split(':')[1]
-    ui = components[3].split(':')[1]
-    s = components[4].split(':')[1]
-    c = components[5].split(':')[1]
-    i = components[6].split(':')[1]
-    a = components[7].split(':')[1]
-
+        return "N/A"  # Eksik bileşenler varsa geçersiz vektör
+    
     try:
+        # Bileşenleri al
+        av = components[0].split(':')[1]
+        ac = components[1].split(':')[1]
+        pr = components[2].split(':')[1]
+        ui = components[3].split(':')[1]
+        s = components[4].split(':')[1]
+        c = components[5].split(':')[1]
+        i = components[6].split(':')[1]
+        a = components[7].split(':')[1]
+
         # Base Score hesapla
         impact = 1 - ((1 - metrics['C'][c]) * (1 - metrics['I'][i]) * (1 - metrics['A'][a]))
         if s == 'U':

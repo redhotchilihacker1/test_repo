@@ -9,7 +9,7 @@ def calculate_cvss_v3_score(cvss_vector):
     metrics = {
         'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55, 'P': 0.2},
         'AC': {'L': 0.77, 'H': 0.44},
-        'PR': {'N': 0.85, 'L': 0.62, 'H': 0.27},
+        'PR': {'N': 0.85, 'L': 0.68, 'H': 0.5},  # Privileges Required farklılık gösteriyor, Scope U veya C'ye göre
         'UI': {'N': 0.85, 'R': 0.62},
         'S': {'U': 1.0, 'C': 1.5},
         'C': {'N': 0.0, 'L': 0.22, 'H': 0.56},
@@ -38,6 +38,12 @@ def calculate_cvss_v3_score(cvss_vector):
         i = components[6].split(':')[1]
         a = components[7].split(':')[1]
 
+        # Privileges Required (PR) 'Scope' (S) değerine göre değişir
+        if s == 'U':  # Unchanged
+            pr_value = metrics['PR'][pr]
+        else:  # Changed
+            pr_value = 0.85 if pr == 'N' else (0.68 if pr == 'L' else 0.5)
+
         # Base Score hesapla
         impact = 1 - ((1 - metrics['C'][c]) * (1 - metrics['I'][i]) * (1 - metrics['A'][a]))
         if s == 'U':
@@ -45,16 +51,16 @@ def calculate_cvss_v3_score(cvss_vector):
         else:
             impact_score = 7.52 * (impact - 0.029) - 3.25 * (impact - 0.02)**15
 
-        exploitability_score = 8.22 * metrics['AV'][av] * metrics['AC'][ac] * metrics['PR'][pr] * metrics['UI'][ui]
+        exploitability_score = 8.22 * metrics['AV'][av] * metrics['AC'][ac] * pr_value * metrics['UI'][ui]
 
-        base_score = impact_score + exploitability_score
+        base_score = 0
         if impact <= 0:
             base_score = 0
         else:
             if s == 'U':
-                base_score = min(base_score, 10)
+                base_score = min(impact_score + exploitability_score, 10)
             else:
-                base_score = min(base_score, 15)
+                base_score = min(1.08 * (impact_score + exploitability_score), 10)
 
         return round(base_score, 1)
 

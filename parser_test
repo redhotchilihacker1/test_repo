@@ -42,9 +42,13 @@ for report_host in soup.find_all("ReportHost"):
         svc_name = report_item.get('svc_name', 'N/A')
         protocol = report_item.get('protocol', 'N/A')
 
+        # Verileri kontrol et
+        print(f"Port: {port}, Service: {svc_name}, Protocol: {protocol}")
+        
         # CVSS vektör bilgisini al
         cvss_vector = report_item.find('cvss3_vector').text if report_item.find('cvss3_vector') else 'N/A'
-        
+        print(f"CVSS Vector: {cvss_vector}")
+
         # Verileri bir satır olarak kaydet
         data.append({
             'DNS Name': dns_name,

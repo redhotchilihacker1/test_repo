@@ -8,7 +8,7 @@ def calculate_cvss_v2_score(cvss_vector):
     # CVSS v2.0 bileşenlerinin varsayılan değerleri
     metrics = {
         'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55},
-        'AC': {'L': 0.77, 'H': 0.44},
+        'AC': {'L': 0.77, 'H': 0.44, 'M': 0.55},  # M değeri eklendi
         'Au': {'N': 0.85, 'S': 0.56},
         'C': {'N': 0.0, 'P': 0.5, 'C': 1.0},
         'I': {'N': 0.0, 'P': 0.5, 'C': 1.0},
@@ -33,12 +33,16 @@ def calculate_cvss_v2_score(cvss_vector):
     a = components[5].split(':')[1]
 
     # Hesapla
-    base_score = round(
-        (0.5 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['Au'][au]) +
-        (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) * 0.5),
-        1
-    )
-    return min(max(base_score, 0), 10)  # Puanı 0-10 arasında sınırlı tut
+    try:
+        base_score = round(
+            (0.5 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['Au'][au]) +
+            (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) * 0.5),
+            1
+        )
+        return min(max(base_score, 0), 10)  # Puanı 0-10 arasında sınırlı tut
+    except KeyError as e:
+        print(f"KeyError: {e} - Geçersiz CVSS bileşeni: {cvss_vector}")
+        return "N/A"
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:
@@ -103,7 +107,7 @@ for report_host in soup.find_all("ReportHost"):
         cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
         
         # CVSS puanını hesapla
-        cvss_score = calculate_cvss_v2_score(cvss_vector) if 'CVSS2#' in cvss_vector else 'N/A'
+        cvss_score = calculate_cvss_v2_score(cvss_vector)
         
         # Verileri bir satır olarak kaydet
         data.append({

@@ -2,7 +2,43 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 from bs4 import BeautifulSoup
 import sys
-from cvss import CVSS  # CVSS hesaplamak için kütüphane
+
+# CVSS puanını hesaplamak için fonksiyon
+def calculate_cvss_score(cvss_vector):
+    # CVSS bileşenlerinin varsayılan değerleri
+    metrics = {
+        'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55, 'P': 0.2},
+        'AC': {'L': 0.77, 'H': 0.44},
+        'PR': {'N': 0.85, 'L': 0.62, 'H': 0.27},
+        'UI': {'N': 0.85, 'R': 0.62},
+        'S': {'U': 1.0, 'C': 1.1},
+        'C': {'N': 0.0, 'L': 0.22, 'H': 0.56},
+        'I': {'N': 0.0, 'L': 0.22, 'H': 0.56},
+        'A': {'N': 0.0, 'L': 0.22, 'H': 0.56}
+    }
+    
+    # CVSS vektörünü parçala
+    components = cvss_vector.split('/')
+    if len(components) < 8:
+        return "N/A"  # Geçersiz vektör
+
+    # Bileşenleri al
+    av = components[0].split(':')[1]
+    ac = components[1].split(':')[1]
+    pr = components[2].split(':')[1]
+    ui = components[3].split(':')[1]
+    s = components[4].split(':')[1]
+    c = components[5].split(':')[1]
+    i = components[6].split(':')[1]
+    a = components[7].split(':')[1]
+
+    # Hesapla
+    base_score = round(
+        (0.6 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['PR'][pr] + metrics['UI'][ui]) +
+        0.4 * (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) - 1.5) * metrics['S'][s],
+        1
+    )
+    return min(max(base_score, 0), 10)  # Puanı 0-10 arasında sınırlı tut
 
 # Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
 if len(sys.argv) != 3:
@@ -67,7 +103,7 @@ for report_host in soup.find_all("ReportHost"):
         cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
         
         # CVSS puanını hesapla
-        cvss_score = CVSS(cvss_vector).base_score if cvss_vector != 'N/A' else 'N/A'
+        cvss_score = calculate_cvss_score(cvss_vector) if cvss_vector != 'N/A' else 'N/A'
         
         # Verileri bir satır olarak kaydet
         data.append({

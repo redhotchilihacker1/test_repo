@@ -1,112 +1,140 @@
-import xml.etree.ElementTree as ET
+import re
 import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill, Font, Alignment
-from openpyxl.utils import get_column_letter
-import sys
+from bs4 import BeautifulSoup
+import argparse
 
-# Kullanıcıdan dosya yolunu ve kaydedilecek dosya adını al
-if len(sys.argv) != 3:
-    print("Kullanım: python script.py <input.nessus> <output_filename>")
-    sys.exit(1)
+# Set up argument parser
+parser = argparse.ArgumentParser(description="Parse vulnerability data from an HTML report and export to Excel and CSV.")
+parser.add_argument('input_html', type=str, help="Path to the input HTML file")
+parser.add_argument('output_file', type=str, help="Output file name (without extension)")
 
-nessus_file = sys.argv[1]
-output_filename = sys.argv[2]
+args = parser.parse_args()
 
-# Nessus dosyasını XML olarak yükle
-tree = ET.parse(nessus_file)
-root = tree.getroot()
+# Load HTML file
+with open(args.input_html, 'r', encoding='utf-8') as file:
+    html_content = file.read()
 
-# Verileri tutmak için listeler
-data = []
+# Parse HTML with BeautifulSoup
+soup = BeautifulSoup(html_content, 'html.parser')
 
-# Nessus dosyasındaki her host'u işle
-for report_host in root.findall(".//ReportHost"):
-    dns_name = report_host.attrib.get('name')
-    ip_address = None
+# Initialize lists for each column
+vulnerabilities = []
+ip_ports = []
+port_service_protocol = []
+risk_factors = []
+cvss_scores = []
+cvss_vectors = []
+dns_names = []
+synopsis_list = []
+description_list = []
+see_also_list = []
+solution_list = []
+
+# Function to check if the background is not white (checking both 'background-color' and 'background')
+def is_not_white_background(tag):
+    style = tag.get('style')
+    if style:
+        # Check for 'background-color' and 'background'
+        background_color_match = re.search(r'background(-color)?:\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgb\((\d+),\s*(\d+),\s*(\d+)\))', style)
+        if background_color_match:
+            color = background_color_match.group(0)
+            # Exclude white (#FFFFFF, #FFF, or rgb(255, 255, 255))
+            if '255, 255, 255' not in color and '#ffffff' not in color.lower() and '#fff' not in color.lower():
+                return True
+    return False
+
+# Find the divs with non-white background and extract the cleartext starting with a 5-digit number
+for div in soup.find_all('div'):
+    if is_not_white_background(div):
+        # Check the text inside the current div for a 5-digit number at the start
+        text = div.get_text(strip=True)
+        if re.match(r'^\d{5}', text):
+            vulnerabilities.append(text)
+
+# Function to extract cleartext after a specific header
+def extract_text_after_div(header_text):
+    for div in soup.find_all('div'):
+        if header_text in div.get_text(strip=True):
+            next_sibling = div.find_next_sibling('div')
+            if next_sibling:
+                return next_sibling.get_text(strip=True)
+    return "N/A"
+
+# Extract values for DNS Name, Synopsis, Description, See Also, Solution
+dns_names.append(extract_text_after_div("DNS Name"))
+synopsis_list.append(extract_text_after_div("Synopsis"))
+description_list.append(extract_text_after_div("Description"))
+see_also_list.append(extract_text_after_div("See Also"))
+solution_list.append(extract_text_after_div("Solution"))
+
+# For IP:Port, Risk Factor, CVSS, Port/Service/Protocol, and CVSS Vector
+for header in soup.find_all(['h2', 'h3', 'div'], class_=lambda x: x and 'details-header' in x):
+    header_text = header.get_text(strip=True)
+    data_row = header.find_next_sibling()
     
-    for tag in report_host.findall("HostProperties/tag"):
-        if tag.attrib.get('name') == 'host-ip':
-            ip_address = tag.text
-    
-    # Her host'un zafiyetlerini bul
-    for report_item in report_host.findall("ReportItem"):
-        plugin_name = report_item.attrib.get('pluginName', 'N/A')
-        synopsis = report_item.findtext('synopsis', 'N/A')
-        description = report_item.findtext('description', 'N/A')
-        see_also = report_item.findtext('see_also', 'N/A')
-        solution = report_item.findtext('solution', 'N/A')
-        risk_factor = report_item.findtext('risk_factor', 'N/A')
-        
-        # Verileri bir satır olarak kaydet
-        data.append({
-            'DNS Name': dns_name,
-            'IP': ip_address,
-            'Vulnerability': plugin_name,
-            'Synopsis': synopsis,
-            'Description': description,
-            'References': see_also,
-            'Solution': solution,
-            'Risk Factor': risk_factor
-        })
+    while data_row:
+        if 'Plugin Output' in header_text:
+            # Extract IP:Port
+            ip_port = data_row.get_text(strip=True)
+            ip_ports.append(ip_port)
+            # Extract port, service name, and protocol (this depends on the exact format of the report)
+            # Assuming data is in the format 'Port/Service/Protocol: X/Y/Z'
+            port_service_protocol_match = re.search(r'(\d+)/(\S+)/(\S+)', ip_port)
+            if port_service_protocol_match:
+                port, svc_name, protocol = port_service_protocol_match.groups()
+                port_service_protocol.append(f"{port}/{svc_name}/{protocol}")
+            else:
+                port_service_protocol.append("N/A")
+            break
+        elif 'Risk Factor' in header_text:
+            risk_factor = data_row.get_text(strip=True)
+            risk_factors.append(risk_factor)
+            break
+        elif 'CVSS v3.0 Base Score' in header_text:
+            cvss_score = data_row.get_text(strip=True)
+            cvss_scores.append(cvss_score)
+            break
+        elif 'CVSS Vector' in header_text:  # Assuming CVSS vector is available under this header
+            cvss_vector = data_row.get_text(strip=True)
+            cvss_vectors.append(cvss_vector)
+            break
+        data_row = data_row.find_next_sibling()
 
-# Verileri pandas DataFrame'e dönüştür
-df = pd.DataFrame(data)
+# Ensure all lists are of the same length
+max_len = max(len(vulnerabilities), len(ip_ports), len(port_service_protocol), len(risk_factors), len(cvss_scores), len(cvss_vectors), len(dns_names))
+vulnerabilities.extend(["N/A"] * (max_len - len(vulnerabilities)))
+ip_ports.extend(["N/A"] * (max_len - len(ip_ports)))
+port_service_protocol.extend(["N/A"] * (max_len - len(port_service_protocol)))
+risk_factors.extend(["N/A"] * (max_len - len(risk_factors)))
+cvss_scores.extend(["N/A"] * (max_len - len(cvss_scores)))
+cvss_vectors.extend(["N/A"] * (max_len - len(cvss_vectors)))
+dns_names.extend(["N/A"] * (max_len - len(dns_names)))
+synopsis_list.extend(["N/A"] * (max_len - len(synopsis_list)))
+description_list.extend(["N/A"] * (max_len - len(description_list)))
+see_also_list.extend(["N/A"] * (max_len - len(see_also_list)))
+solution_list.extend(["N/A"] * (max_len - len(solution_list)))
 
-# İlk olarak XLSX dosyasını pandas ile kaydet
-xlsx_output = f'{output_filename}.xlsx'
-df.to_excel(xlsx_output, index=False)
+# Create a DataFrame
+df = pd.DataFrame({
+    'Vulnerability': vulnerabilities,
+    'IP:Port': ip_ports,
+    'Port/Service/Protocol': port_service_protocol,
+    'Risk Factor': risk_factors,
+    'CVSS v3.0 Base Score': cvss_scores,
+    'CVSS Vector': cvss_vectors,
+    'DNS Name': dns_names,
+    'Synopsis': synopsis_list,
+    'Description': description_list,
+    'See Also': see_also_list,
+    'Solution': solution_list
+})
 
-# Şimdi openpyxl ile düzenleme yapacağız
-wb = load_workbook(xlsx_output)
-ws = wb.active
+# Output file names
+output_excel = f"{args.output_file}.xlsx"
+output_csv = f"{args.output_file}.csv"
 
-# Başlıkları kalın ve ortalı yap
-header_font = Font(bold=True)
-center_alignment = Alignment(horizontal='center', vertical='center')
+# Save to Excel and CSV files
+df.to_excel(output_excel, index=False)
+df.to_csv(output_csv, index=False)
 
-for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=ws.max_column):
-    for cell in col:
-        cell.font = header_font
-        cell.alignment = center_alignment
-
-# Hücre genişliklerini ayarla
-for col in ws.columns:
-    max_length = 0
-    column_letter = get_column_letter(col[0].column)  # Sütun harfini al
-    for cell in col:
-        if cell.value:
-            max_length = max(max_length, len(str(cell.value)))
-    adjusted_width = max_length + 2
-    ws.column_dimensions[column_letter].width = adjusted_width
-
-# Koşullu biçimlendirme (renklendirme) için
-fill_low = PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")      # Mavi
-fill_medium = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")    # Koyu turuncu
-fill_high = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")      # Kırmızı
-fill_critical = PatternFill(start_color="800000", end_color="800000", fill_type="solid")  # Bordo
-
-# Metinlerin sığması için wrap_text aktif et
-for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
-    for cell in row:
-        cell.alignment = Alignment(wrap_text=True)
-
-# Risk faktörüne göre renklendirme
-for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
-    risk_factor_cell = row[ws.max_column - 1]  # Risk Factor sütununu bul (son sütun)
-    risk_factor_value = risk_factor_cell.value
-    
-    if risk_factor_value == 'Low':
-        risk_factor_cell.fill = fill_low
-    elif risk_factor_value == 'Medium':
-        risk_factor_cell.fill = fill_medium
-    elif risk_factor_value == 'High':
-        risk_factor_cell.fill = fill_high
-    elif risk_factor_value == 'Critical':
-        risk_factor_cell.fill = fill_critical
-
-# Düzenlenmiş XLSX dosyasını kaydet
-adjusted_xlsx_output = f'{output_filename}_styled.xlsx'
-wb.save(adjusted_xlsx_output)
-
-print(f"Biçimlendirilmiş XLSX kaydedildi: {adjusted_xlsx_output}")
+print(f"Files have been generated successfully: {output_excel}, {output_csv}")

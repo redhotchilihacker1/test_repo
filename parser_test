@@ -3,43 +3,60 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import sys
 
-# CVSS puanını hesaplamak için fonksiyon
-def calculate_cvss_v2_score(cvss_vector):
-    # CVSS v2.0 bileşenlerinin varsayılan değerleri
+# CVSS v3 puanını hesaplamak için fonksiyon
+def calculate_cvss_v3_score(cvss_vector):
+    # CVSS v3.0 bileşenlerinin varsayılan değerleri
     metrics = {
-        'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55},
-        'AC': {'L': 0.77, 'H': 0.44, 'M': 0.55},  # M değeri eklendi
-        'Au': {'N': 0.85, 'S': 0.56},
-        'C': {'N': 0.0, 'P': 0.5, 'C': 1.0},
-        'I': {'N': 0.0, 'P': 0.5, 'C': 1.0},
-        'A': {'N': 0.0, 'P': 0.5, 'C': 1.0}
+        'AV': {'N': 0.85, 'A': 0.62, 'L': 0.55, 'P': 0.2},
+        'AC': {'L': 0.77, 'H': 0.44},
+        'PR': {'N': 0.85, 'L': 0.62, 'H': 0.27},
+        'UI': {'N': 0.85, 'R': 0.62},
+        'S': {'U': 1.0, 'C': 1.5},  # Scope Unchanged (U) or Changed (C)
+        'C': {'N': 0.0, 'L': 0.22, 'H': 0.56},
+        'I': {'N': 0.0, 'L': 0.22, 'H': 0.56},
+        'A': {'N': 0.0, 'L': 0.22, 'H': 0.56}
     }
     
     # CVSS vektörünü parçala
-    if not cvss_vector.startswith("CVSS2#"):
+    if not cvss_vector.startswith("CVSS:3.0"):
         return "N/A"  # Geçersiz vektör
 
-    components = cvss_vector[6:].split('/')
+    components = cvss_vector[8:].split('/')
     
-    if len(components) < 6:
+    if len(components) < 8:
         return "N/A"  # Geçersiz vektör
 
     # Bileşenleri al
     av = components[0].split(':')[1]
     ac = components[1].split(':')[1]
-    au = components[2].split(':')[1]
-    c = components[3].split(':')[1]
-    i = components[4].split(':')[1]
-    a = components[5].split(':')[1]
+    pr = components[2].split(':')[1]
+    ui = components[3].split(':')[1]
+    s = components[4].split(':')[1]
+    c = components[5].split(':')[1]
+    i = components[6].split(':')[1]
+    a = components[7].split(':')[1]
 
-    # Hesapla
     try:
-        base_score = round(
-            (0.5 * (metrics['AV'][av] + metrics['AC'][ac] + metrics['Au'][au]) +
-            (metrics['C'][c] + metrics['I'][i] + metrics['A'][a]) * 0.5),
-            1
-        )
-        return min(max(base_score, 0), 10)  # Puanı 0-10 arasında sınırlı tut
+        # Base Score hesapla
+        impact = 1 - ((1 - metrics['C'][c]) * (1 - metrics['I'][i]) * (1 - metrics['A'][a]))
+        if s == 'U':
+            impact_score = 6.42 * impact
+        else:
+            impact_score = 7.52 * (impact - 0.029) - 3.25 * (impact - 0.02)**15
+
+        exploitability_score = 8.22 * metrics['AV'][av] * metrics['AC'][ac] * metrics['PR'][pr] * metrics['UI'][ui]
+
+        base_score = impact_score + exploitability_score
+        if impact <= 0:
+            base_score = 0
+        else:
+            if s == 'U':
+                base_score = min(base_score, 10)
+            else:
+                base_score = min(base_score, 15)
+
+        return round(base_score, 1)
+
     except KeyError as e:
         print(f"KeyError: {e} - Geçersiz CVSS bileşeni: {cvss_vector}")
         return "N/A"
@@ -103,11 +120,11 @@ for report_host in soup.find_all("ReportHost"):
         # Birleştir ve formata uygun hale getir
         port_service_protocol = f"{port}/{svc_name}/{protocol}"
         
-        # CVSS değerini al
-        cvss_vector = report_item.find('cvss_vector').text if report_item.find('cvss_vector') else 'N/A'
+        # CVSS v3 değerini al
+        cvss3_vector = report_item.find('cvss3_vector').text if report_item.find('cvss3_vector') else 'N/A'
         
-        # CVSS puanını hesapla
-        cvss_score = calculate_cvss_v2_score(cvss_vector)
+        # CVSS v3 puanını hesapla
+        cvss_score = calculate_cvss_v3_score(cvss3_vector)
         
         # Verileri bir satır olarak kaydet
         data.append({
@@ -120,7 +137,7 @@ for report_host in soup.find_all("ReportHost"):
             'Solution': solution,
             'Risk Factor': risk_factor,
             'Port/Service/Protocol': port_service_protocol,
-            'CVSS Vector': cvss_vector,
+            'CVSS Vector': cvss3_vector,
             'CVSS Score': cvss_score
         })
 

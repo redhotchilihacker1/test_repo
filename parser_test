@@ -19,6 +19,15 @@ with open(nessus_file, 'r', encoding='utf-8') as file:
 # Verileri tutmak için listeler
 data = []
 
+# Risk Factor önceliklerini tanımla
+risk_order = {
+    "Critical": 1,
+    "High": 2,
+    "Medium": 3,
+    "Low": 4,
+    "None": 5  # "None" olanları en sona eklemek için
+}
+
 # Nessus dosyasındaki her host'u işle
 for report_host in soup.find_all("ReportHost"):
     dns_name = report_host.get('name')
@@ -72,6 +81,10 @@ for report_host in soup.find_all("ReportHost"):
 
 # Verileri pandas DataFrame'e dönüştür
 df = pd.DataFrame(data)
+
+# Risk Factor'e göre sıralama yap
+df['Risk Factor Order'] = df['Risk Factor'].map(risk_order)
+df = df.sort_values(by='Risk Factor Order').drop(columns='Risk Factor Order')
 
 # CSV olarak kaydet
 csv_output = f'{output_filename}.csv'

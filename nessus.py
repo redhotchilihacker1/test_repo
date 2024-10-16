@@ -1,21 +1,8 @@
 import requests
 import json
 import time
+import argparse
 from datetime import datetime
-
-# Nessus sunucusu bilgileri
-nessus_servers = [
-    {
-        'url': 'https://<nessus_server1>:8834',
-        'username': '<username>',
-        'password': '<password>'
-    },
-    {
-        'url': 'https://<nessus_server2>:8834',
-        'username': '<username>',
-        'password': '<password>'
-    }
-]
 
 # Nessus API'ye login olma fonksiyonu
 def login(nessus_url, username, password):
@@ -44,20 +31,26 @@ def start_scan(nessus_url, token, scan_name, policy_id=None, hosts=[]):
 
 # Ana fonksiyon
 def main():
-    for server in nessus_servers:
-        token = login(server['url'], server['username'], server['password'])
-        
-        # Host dosyasını oku
-        with open('<path_to_host_file>', 'r') as f:
-            hosts = [line.strip() for line in f.readlines()]
+    parser = argparse.ArgumentParser(description="Nessus taraması başlatma scripti")
+    parser.add_argument('nessus_url', type=str, help='Nessus sunucusunun URL adresi')
+    parser.add_argument('username', type=str, help='Nessus kullanıcı adı')
+    parser.add_argument('password', type=str, help='Nessus şifresi')
+    parser.add_argument('host_file', type=str, help='Tarama yapılacak hostların bulunduğu dosya yolu')
+    parser.add_argument('--policy_id', type=str, help='Opsiyonel olarak kullanılacak policy ID', default=None)
 
-        # Policy opsiyonel, varsa ID'sini ekleyin
-        policy_id = None  # Eğer spesifik bir policy kullanılacaksa buraya ID eklenmeli
+    args = parser.parse_args()
 
-        # Scan başlat
-        scan_name = f"Tarama {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        start_scan(server['url'], token, scan_name, policy_id, hosts)
-        time.sleep(1)  # Sunucuya aşırı yüklenmemek için küçük bir bekleme
+    # Nessus sunucusuna giriş yap
+    token = login(args.nessus_url, args.username, args.password)
+
+    # Host dosyasını oku
+    with open(args.host_file, 'r') as f:
+        hosts = [line.strip() for line in f.readlines()]
+
+    # Scan başlat
+    scan_name = f"Tarama {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    start_scan(args.nessus_url, token, scan_name, args.policy_id, hosts)
+    time.sleep(1)  # Sunucuya aşırı yüklenmemek için küçük bir bekleme
 
 if __name__ == '__main__':
     main()

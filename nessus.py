@@ -51,7 +51,7 @@ def start_scan(nessus_url, token, scan_name, targets, policy_id=None):
         "settings": {
             "name": scan_name,
             "enabled": True,
-            "text_targets": targets
+            "text_targets": targets  # Hedefleri buraya geç
         }
     }
 
@@ -72,7 +72,7 @@ def start_scan(nessus_url, token, scan_name, targets, policy_id=None):
         else:
             print(f"Tarama başlatılamadı. Hata kodu: {launch_response.status_code}")
     else:
-        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code}")
+        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code} - {response.json()}")  # Detaylı hata mesajı ekledim
 
 # Nessus sunucusu ile bağlantı kurma fonksiyonu
 def connect_to_nessus(nessus_url, token):

@@ -18,7 +18,7 @@ def login(nessus_url, username, password, verify_ssl):
 def start_scan(nessus_url, token, scan_name, hosts, policy_id=None, verify_ssl=True):
     headers = {'X-Cookie': f'token={token}', 'Content-Type': 'application/json'}
     scan_data = {
-        "uuid": policy_id if policy_id else "template-uuid",
+        "uuid": policy_id if policy_id else "template-uuid",  # Burada Nessus'un uygun şablon UUID'si olmalı
         "settings": {
             "name": scan_name,
             "text_targets": ','.join(hosts),
@@ -33,7 +33,7 @@ def start_scan(nessus_url, token, scan_name, hosts, policy_id=None, verify_ssl=T
         print(f"Hata oluştu: {response.text}")
 
 # Ana fonksiyon
-def main(nessus_url, username, password, host_file, policy_id=None, verify_ssl=True):
+def main(nessus_url, username, password, scan_name, host_file, policy_id=None, verify_ssl=True):
     token = login(nessus_url, username, password, verify_ssl)
     
     # Host dosyasını oku
@@ -41,7 +41,6 @@ def main(nessus_url, username, password, host_file, policy_id=None, verify_ssl=T
         hosts = [line.strip() for line in f.readlines()]
 
     # Scan başlat
-    scan_name = f"Tarama {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     start_scan(nessus_url, token, scan_name, hosts, policy_id, verify_ssl)
 
 if __name__ == '__main__':
@@ -49,10 +48,11 @@ if __name__ == '__main__':
     parser.add_argument('--nessus_url', required=True, help="Nessus sunucusu URL'si (örnek: https://<nessus_server>:8834)")
     parser.add_argument('--username', required=True, help="Nessus kullanıcı adı")
     parser.add_argument('--password', required=True, help="Nessus şifresi")
+    parser.add_argument('--scan_name', required=True, help="Başlatılacak taramanın adı")
     parser.add_argument('--host_file', required=True, help="Tarama yapılacak host dosyasının yolu")
     parser.add_argument('--policy_id', help="Kullanılacak policy ID (opsiyonel)", default=None)
     parser.add_argument('--verify_ssl', action='store_true', help="SSL doğrulaması yapılsın mı? (varsayılan: yapılmaz)", default=False)
     
     args = parser.parse_args()
 
-    main(args.nessus_url, args.username, args.password, args.host_file, args.policy_id, args.verify_ssl)
+    main(args.nessus_url, args.username, args.password, args.scan_name, args.host_file, args.policy_id, args.verify_ssl)

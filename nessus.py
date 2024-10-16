@@ -1,58 +1,64 @@
 import requests
 import json
 import argparse
-from datetime import datetime
-import urllib3
 
-# InsecureRequestWarning uyarısını devre dışı bırak (SSL doğrulaması kapalıysa)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# Nessus API'ye login olma fonksiyonu
-def login(nessus_url, username, password, verify_ssl):
+# Nessus'a giriş fonksiyonu
+def nessus_login(nessus_url, username, password):
+    # Nessus API login endpoint'i
     login_url = f"{nessus_url}/session"
-    data = {'username': username, 'password': password}
-    response = requests.post(login_url, data=json.dumps(data), headers={'Content-Type': 'application/json'}, verify=verify_ssl)
-    return response.json()['token']
-
-# Tarama başlatma fonksiyonu
-def start_scan(nessus_url, token, scan_name, hosts, policy_id=None, verify_ssl=True):
-    headers = {'X-Cookie': f'token={token}', 'Content-Type': 'application/json'}
-    scan_data = {
-        "uuid": policy_id if policy_id else "template-uuid",  # Burada Nessus'un uygun şablon UUID'si olmalı
-        "settings": {
-            "name": scan_name,
-            "text_targets": ','.join(hosts),
-            "launch_now": True
-        }
+    
+    headers = {"Content-Type": "application/json"}
+    login_data = {
+        "username": username,
+        "password": password
     }
 
-    response = requests.post(f"{nessus_url}/scans", headers=headers, data=json.dumps(scan_data), verify=verify_ssl)
+    # Nessus'a giriş isteği
+    response = requests.post(login_url, headers=headers, data=json.dumps(login_data), verify=False)
+
+    # Giriş başarılıysa token döner
     if response.status_code == 200:
-        print(f"Tarama başlatıldı: {scan_name}")
+        token = response.json()["token"]
+        print(f"Giriş başarılı. Token: {token}")
+        return token
     else:
-        print(f"Hata oluştu: {response.text}")
+        print(f"Giriş başarısız. Hata: {response.status_code}")
+        return None
 
-# Ana fonksiyon
-def main(nessus_url, username, password, scan_name, host_file, policy_id=None, verify_ssl=True):
-    token = login(nessus_url, username, password, verify_ssl)
+# Nessus sunucusu ile bağlantı kurma fonksiyonu
+def connect_to_nessus(nessus_url, token):
+    headers = {
+        "Content-Type": "application/json",
+        "X-Cookie": f"token={token}"
+    }
     
-    # Host dosyasını oku
-    with open(host_file, 'r') as f:
-        hosts = [line.strip() for line in f.readlines()]
+    # Sunucu özelliklerini al
+    version_url = f"{nessus_url}/server/properties"
+    response = requests.get(version_url, headers=headers, verify=False)
 
-    # Scan başlat
-    start_scan(nessus_url, token, scan_name, hosts, policy_id, verify_ssl)
+    # Eğer başarılıysa sunucu bilgilerini yazdır
+    if response.status_code == 200:
+        print("Sunucu bilgileri:")
+        print(json.dumps(response.json(), indent=4))
+    else:
+        print(f"Sunucuya bağlanırken bir hata oluştu. Hata kodu: {response.status_code}")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Nessus tarama scripti")
-    parser.add_argument('--nessus_url', required=True, help="Nessus sunucusu URL'si (örnek: https://<nessus_server>:8834)")
-    parser.add_argument('--username', required=True, help="Nessus kullanıcı adı")
-    parser.add_argument('--password', required=True, help="Nessus şifresi")
-    parser.add_argument('--scan_name', required=True, help="Başlatılacak taramanın adı")
-    parser.add_argument('--host_file', required=True, help="Tarama yapılacak host dosyasının yolu")
-    parser.add_argument('--policy_id', help="Kullanılacak policy ID (opsiyonel)", default=None)
-    parser.add_argument('--verify_ssl', action='store_true', help="SSL doğrulaması yapılsın mı? (varsayılan: yapılmaz)", default=False)
+# Argümanlar için komut satırı arayüzü
+def main():
+    # Argümanları ayarla
+    parser = argparse.ArgumentParser(description="Nessus sunucusuna bağlan ve login ol.")
+    parser.add_argument("-u", "--url", required=True, help="Nessus sunucu URL'si (örneğin: https://<nessus_server>:8834)")
+    parser.add_argument("-n", "--username", required=True, help="Nessus kullanıcı adı")
+    parser.add_argument("-p", "--password", required=True, help="Nessus şifresi")
     
     args = parser.parse_args()
 
-    main(args.nessus_url, args.username, args.password, args.scan_name, args.host_file, args.policy_id, args.verify_ssl)
+    # Giriş yap ve token al
+    token = nessus_login(args.url, args.username, args.password)
+
+    # Eğer token alındıysa sunucuya bağlan
+    if token:
+        connect_to_nessus(args.url, token)
+
+if __name__ == "__main__":
+    main()

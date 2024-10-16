@@ -22,12 +22,12 @@ def start_scan(nessus_url, api_key, secret_key, scan_name, targets, policy_id=No
         'settings': {
             'name': scan_name,
             'enabled': True,
-            'text_targets': targets
+            'text_targets': targets  # Hedefleri buraya geçir
         }
     }
 
     # Tarama oluşturma
-    scan = tio.scans.create(scan_settings)
+    scan = tio.scans.create(**scan_settings)  # Hatalı kısım düzeltildi
     print(f"Tarama oluşturuldu. Tarama ID: {scan['id']}")
 
     # Tarama başlatma

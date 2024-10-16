@@ -19,7 +19,7 @@ def nessus_login(nessus_url, username, password):
         print(f"Giriş başarılı. Token: {token}")
         return token
     else:
-        print(f"Giriş başarısız. Hata: {response.status_code}")
+        print(f"Giriş başarısız. Hata: {response.status_code} - Yanıt: {response.text}")
         return None
 
 # Tarama başlatma fonksiyonu
@@ -42,7 +42,7 @@ def start_scan(nessus_url, token, scan_name, targets, policy_id=None):
                 print("Hiçbir politika bulunamadı!")
                 return
         else:
-            print(f"Politika listesi alınamadı. Hata kodu: {response.status_code}")
+            print(f"Politika listesi alınamadı. Hata kodu: {response.status_code} - Yanıt: {response.text}")
             return
 
     # Tarama verilerini oluştur
@@ -70,9 +70,9 @@ def start_scan(nessus_url, token, scan_name, targets, policy_id=None):
         if launch_response.status_code == 200:
             print(f"Tarama başlatıldı: {scan_name}")
         else:
-            print(f"Tarama başlatılamadı. Hata kodu: {launch_response.status_code}")
+            print(f"Tarama başlatılamadı. Hata kodu: {launch_response.status_code} - Yanıt: {launch_response.text}")  # Yanıtı göster
     else:
-        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code} - {response.json()}")  # Detaylı hata mesajı ekledim
+        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code} - Yanıt: {response.text}")  # Yanıtı göster
 
 # Nessus sunucusu ile bağlantı kurma fonksiyonu
 def connect_to_nessus(nessus_url, token):

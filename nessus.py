@@ -23,11 +23,27 @@ def nessus_login(nessus_url, username, password):
         return None
 
 # Tarama başlatma fonksiyonu
-def start_scan(nessus_url, token, scan_name, policy_id, targets):
+def start_scan(nessus_url, token, scan_name, targets, policy_id=None):
     headers = {
         "Content-Type": "application/json",
         "X-Cookie": f"token={token}"
     }
+
+    # Eğer politika verilmemişse varsayılan politikayı kullan
+    if policy_id is None:
+        policies_url = f"{nessus_url}/policies"
+        response = requests.get(policies_url, headers=headers, verify=False)
+        if response.status_code == 200:
+            policies = response.json()['policies']
+            if policies:
+                policy_id = policies[0]['uuid']  # İlk politikayı alıyoruz
+                print(f"Politika belirtilmedi, varsayılan politika kullanılıyor: {policy_id}")
+            else:
+                print("Hiçbir politika bulunamadı!")
+                return
+        else:
+            print(f"Politika listesi alınamadı. Hata kodu: {response.status_code}")
+            return
 
     # Tarama verilerini oluştur
     scan_data = {
@@ -82,7 +98,7 @@ def main():
     parser.add_argument("-p", "--password", required=True, help="Nessus şifresi")
     parser.add_argument("-f", "--hosts_file", required=True, help="Hedef hostların bulunduğu dosya")
     parser.add_argument("-s", "--scan_name", required=True, help="Başlatılacak taramanın adı")
-    parser.add_argument("-i", "--policy_id", required=True, help="Tarama politikası UUID")
+    parser.add_argument("-i", "--policy_id", required=False, help="Tarama politikası UUID (opsiyonel)")
 
     args = parser.parse_args()
 
@@ -96,7 +112,7 @@ def main():
     # Eğer token alındıysa tarama başlat
     if token:
         connect_to_nessus(args.url, token)
-        start_scan(args.url, token, args.scan_name, args.policy_id, targets)
+        start_scan(args.url, token, args.scan_name, targets, args.policy_id)
 
 if __name__ == "__main__":
     main()

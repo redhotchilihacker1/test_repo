@@ -4,7 +4,7 @@ import argparse
 # Tarama başlatma fonksiyonu
 def start_scan(nessus_url, api_key, secret_key, scan_name, targets, policy_id=None):
     # Tenable.io nesnesi oluştur
-    tio = TenableIO(api_key, secret_key)
+    tio = TenableIO(api_key, secret_key, baseurl=nessus_url, verify=False)  # SSL doğrulamasını devre dışı bırak
 
     # Tarama politikalarını al
     if policy_id is None:
@@ -22,12 +22,12 @@ def start_scan(nessus_url, api_key, secret_key, scan_name, targets, policy_id=No
         'settings': {
             'name': scan_name,
             'enabled': True,
-            'text_targets': targets  # Hedefleri buraya geçir
+            'text_targets': targets
         }
     }
 
     # Tarama oluşturma
-    scan = tio.scans.create(**scan_settings)  # Hatalı kısım düzeltildi
+    scan = tio.scans.create(**scan_settings)
     print(f"Tarama oluşturuldu. Tarama ID: {scan['id']}")
 
     # Tarama başlatma

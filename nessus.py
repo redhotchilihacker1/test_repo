@@ -1,43 +1,51 @@
 import requests
 import json
 
-def start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id=None):
-    # Nessus'a bağlanırken kimlik doğrulaması için gerekli header'lar
+def start_scan(base_url, access_key, secret_key, scan_name, targets, policy_name):
     headers = {
         'X-ApiKeys': f'accessKey={access_key}; secretKey={secret_key}',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
     }
-    
-    # Tarama için gerekli ayarları yapılandırma
+
+    # Politika UUID'sini ad ile bul
+    policy_uuid = get_policy_uuid_by_name(base_url, headers, policy_name)
+
+    # Tarama ayarlarını oluştur
     scan_settings = {
-        "uuid": get_policy_uuid(base_url, headers, policy_id),  # Policy UUID alınıyor
+        "uuid": policy_uuid,
         "settings": {
             "name": scan_name,
-            "text_targets": targets
+            "text_targets": targets,
+            "enabled": True
         }
     }
 
-    # Tarama başlatma isteği
-    response = requests.post(f'{base_url}/scans', headers=headers, json=scan_settings, verify=False)
+    # Tarama oluştur
+    response = requests.post(f"{base_url}/scans", headers=headers, json=scan_settings, verify=False)
+    
+    if response.status_code != 200:
+        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code}. Detay: {response.json()}")
+        return
 
-    if response.status_code == 200:
-        scan_id = response.json()['scan']['id']
-        print(f'Tarama başarıyla oluşturuldu. Tarama ID: {scan_id}')
-    else:
-        print(f'Tarama oluşturulamadı. Hata kodu: {response.status_code}')
-        print(f'Hata mesajı: {response.text}')
+    scan_id = response.json()['scan']['id']
+    print(f"Tarama başlatıldı. Tarama ID: {scan_id}")
 
-def get_policy_uuid(base_url, headers, policy_id):
+def get_policy_uuid_by_name(base_url, headers, policy_name):
     # Politika listelerini Nessus'tan çekiyoruz
     response = requests.get(f"{base_url}/policies", headers=headers, verify=False)
-    policies = response.json()
+    
+    if response.status_code != 200:
+        raise Exception(f"Error fetching policies: {response.text}")
 
-    # Tüm politikalar içinde istenen policy_id'yi bul ve uuid'yi döndür
+    policies = response.json()
+    
+    # Politika adını kullanarak UUID'yi bul
     for policy in policies.get('policies', []):
-        if policy['id'] == policy_id:
-            return policy.get('uuid') or policy.get('template_uuid')  # 'uuid' yoksa 'template_uuid'yi kullan
-    raise KeyError("Policy UUID not found for the given policy_id.")
+        if policy['name'] == policy_name:  # Politika adını kontrol et
+            return policy['uuid']
+    
+    raise KeyError("Policy UUID not found for the given policy name.")
+
 
 if __name__ == "__main__":
     # Kullanıcıdan gerekli bilgiler alınıyor

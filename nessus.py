@@ -1,57 +1,55 @@
-from tenable.io import TenableIO
-import argparse
+import requests
+import json
 
-# Tarama başlatma fonksiyonu
-def start_scan(nessus_url, api_key, secret_key, scan_name, targets, policy_id=None):
-    # Tenable.io nesnesi oluştur
-    tio = TenableIO(api_key, secret_key, baseurl=nessus_url, verify=False)  # SSL doğrulamasını devre dışı bırak
-
-    # Tarama politikalarını al
-    if policy_id is None:
-        policies = tio.policies.list()
-        if policies:
-            policy_id = policies[0]['id']  # İlk politikayı alıyoruz
-            print(f"Politika belirtilmedi, varsayılan politika kullanılıyor: {policy_id}")
-        else:
-            print("Hiçbir politika bulunamadı!")
-            return
-
-    # Tarama ayarlarını oluştur
+def start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id=None):
+    # Nessus'a bağlanırken kimlik doğrulaması için gerekli header'lar
+    headers = {
+        'X-ApiKeys': f'accessKey={access_key}; secretKey={secret_key}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+    
+    # Tarama için gerekli ayarları yapılandırma
     scan_settings = {
-        'uuid': policy_id,
-        'settings': {
-            'name': scan_name,
-            'enabled': True,
-            'text_targets': targets
+        "uuid": get_policy_uuid(base_url, headers, policy_id),  # Policy UUID alınıyor
+        "settings": {
+            "name": scan_name,
+            "text_targets": targets
         }
     }
 
-    # Tarama oluşturma
-    scan = tio.scans.create(**scan_settings)
-    print(f"Tarama oluşturuldu. Tarama ID: {scan['id']}")
+    # Tarama başlatma isteği
+    response = requests.post(f'{base_url}/scans', headers=headers, json=scan_settings, verify=False)
 
-    # Tarama başlatma
-    tio.scans.launch(scan['id'])
-    print(f"Tarama başlatıldı: {scan_name}")
+    if response.status_code == 200:
+        scan_id = response.json()['scan']['id']
+        print(f'Tarama başarıyla oluşturuldu. Tarama ID: {scan_id}')
+    else:
+        print(f'Tarama oluşturulamadı. Hata kodu: {response.status_code}')
+        print(f'Hata mesajı: {response.text}')
 
-# Argümanlar için komut satırı arayüzü
-def main():
-    parser = argparse.ArgumentParser(description="Nessus sunucusuna bağlan ve tarama başlat.")
-    parser.add_argument("-u", "--url", required=True, help="Nessus sunucu URL'si (örneğin: https://<nessus_server>:8834)")
-    parser.add_argument("-k", "--api_key", required=True, help="Nessus API anahtarı")
-    parser.add_argument("-s", "--secret_key", required=True, help="Nessus gizli anahtarı")
-    parser.add_argument("-f", "--hosts_file", required=True, help="Hedef hostların bulunduğu dosya")
-    parser.add_argument("-n", "--scan_name", required=True, help="Başlatılacak taramanın adı")
-    parser.add_argument("-i", "--policy_id", required=False, help="Tarama politikası ID (opsiyonel)")
+def get_policy_uuid(base_url, headers, policy_id=None):
+    # Policy UUID almak için istek
+    response = requests.get(f'{base_url}/policies', headers=headers, verify=False)
 
-    args = parser.parse_args()
-
-    # Hedef hostları dosyadan oku
-    with open(args.hosts_file, 'r') as file:
-        targets = file.read().replace("\n", ",")  # Hedefleri virgülle ayır
-
-    # Tarama başlat
-    start_scan(args.url, args.api_key, args.secret_key, args.scan_name, targets, args.policy_id)
+    if response.status_code == 200:
+        policies = response.json()['policies']
+        for policy in policies:
+            if policy_id and policy['id'] == policy_id:
+                return policy['uuid']  # Eğer policy ID verilmişse ona göre UUID döndür
+        # Eğer policy ID verilmemişse varsayılan policy UUID döndür
+        return policies[0]['uuid']
+    else:
+        print(f'Policy UUID alınamadı. Hata kodu: {response.status_code}')
+        return None
 
 if __name__ == "__main__":
-    main()
+    # Kullanıcıdan gerekli bilgiler alınıyor
+    base_url = "https://<nessus_server_ip>:8834"
+    access_key = input("Access Key: ")
+    secret_key = input("Secret Key: ")
+    scan_name = input("Tarama adı: ")
+    targets = input("Hedefler (IP adresleri, virgülle ayrılmış): ")
+    policy_id = input("Policy ID (opsiyonel): ") or None
+
+    start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id)

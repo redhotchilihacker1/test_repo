@@ -39,12 +39,19 @@ def get_policy_uuid_by_name(base_url, headers, policy_name):
 
     policies = response.json()
     
+    # Politika listesinde anahtarların mevcut olup olmadığını kontrol et
+    if 'policies' not in policies:
+        raise KeyError("Politika verisi bulunamadı.")
+
     # Politika adını kullanarak UUID'yi bul
-    for policy in policies.get('policies', []):
+    for policy in policies['policies']:
+        if 'uuid' not in policy:
+            raise KeyError(f"Politika '{policy['name']}' için UUID bulunamadı.")
         if policy['name'] == policy_name:  # Politika adını kontrol et
             return policy['uuid']
     
     raise KeyError("Verilen politika adı için UUID bulunamadı.")
+    print(policies)
 
 if __name__ == "__main__":
     # Kullanıcıdan gerekli bilgiler alınıyor

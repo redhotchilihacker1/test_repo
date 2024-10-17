@@ -35,7 +35,7 @@ def get_policy_uuid_by_name(base_url, headers, policy_name):
     response = requests.get(f"{base_url}/policies", headers=headers, verify=False)
     
     if response.status_code != 200:
-        raise Exception(f"Error fetching policies: {response.text}")
+        raise Exception(f"Politikalar alınırken hata oluştu: {response.text}")
 
     policies = response.json()
     
@@ -44,16 +44,15 @@ def get_policy_uuid_by_name(base_url, headers, policy_name):
         if policy['name'] == policy_name:  # Politika adını kontrol et
             return policy['uuid']
     
-    raise KeyError("Policy UUID not found for the given policy name.")
-
+    raise KeyError("Verilen politika adı için UUID bulunamadı.")
 
 if __name__ == "__main__":
     # Kullanıcıdan gerekli bilgiler alınıyor
-    base_url = "https://<nessus_server_ip>:8834"
+    base_url = "https://<nessus_server_ip>:8834"  # Nessus sunucunun IP adresini buraya yaz
     access_key = input("Access Key: ")
     secret_key = input("Secret Key: ")
     scan_name = input("Tarama adı: ")
     targets = input("Hedefler (IP adresleri, virgülle ayrılmış): ")
-    policy_id = input("Policy ID (opsiyonel): ") or None
+    policy_name = input("Politika adı: ")  # Policy ID yerine politika adı alınıyor
 
-    start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id)
+    start_scan(base_url, access_key, secret_key, scan_name, targets, policy_name)

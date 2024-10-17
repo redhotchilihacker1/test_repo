@@ -1,58 +1,59 @@
 import requests
 import json
 
-def start_scan(base_url, access_key, secret_key, scan_name, targets, policy_name):
+# Nessus API bilgileri
+nessus_url = 'https://<Nessus_Server_IP>:8834'
+api_key = '<Your_API_Key>'
+secret_key = '<Your_Secret_Key>'
+
+# Tarama politikası ve hedef dosyası
+policy_id = '<Policy_ID>'  # Tarama politikası ID'si
+target_file = 'targets.txt'  # Hedeflerin bulunduğu dosya
+
+# Nessus API'sine bağlanma ve kimlik doğrulama
+def authenticate():
     headers = {
-        'X-ApiKeys': f'accessKey={access_key}; secretKey={secret_key}',
+        'X-ApiKeys': f'accessKey={api_key}; secretKey={secret_key}',
         'Content-Type': 'application/json'
     }
+    
+    response = requests.get(f'{nessus_url}/session', headers=headers, verify=False)
+    if response.status_code == 200:
+        print('Başarıyla kimlik doğrulandı.')
+        return headers
+    else:
+        print('Kimlik doğrulama hatası:', response.content)
+        return None
 
-    # Politika UUID'sini ad ile bul
-    policy_uuid = get_policy_uuid_by_name(base_url, headers, policy_name)
-
-    # Tarama ayarlarını oluştur
-    scan_settings = {
-        "uuid": policy_uuid,
-        "settings": {
-            "name": scan_name,
-            "text_targets": targets,
-            "enabled": True
+# Tarama başlatma fonksiyonu
+def start_scan(headers, policy_id, targets):
+    # Tarama oluşturma
+    scan_data = {
+        'uuid': policy_id,
+        'settings': {
+            'name': 'Automated Scan',
+            'policy_id': policy_id,
+            'text_targets': targets
         }
     }
-
-    # Tarama oluştur
-    response = requests.post(f"{base_url}/scans", headers=headers, json=scan_settings, verify=False)
     
-    if response.status_code != 200:
-        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code}. Detay: {response.json()}")
-        return
-
-    scan_id = response.json()['scan']['id']
-    print(f"Tarama başlatıldı. Tarama ID: {scan_id}")
-
-def get_policy_uuid_by_name(base_url, headers, policy_name):
-    # Politika listelerini Nessus'tan çekiyoruz
-    response = requests.get(f"{base_url}/policies", headers=headers, verify=False)
+    response = requests.post(f'{nessus_url}/scans', headers=headers, json=scan_data, verify=False)
     
-    if response.status_code != 200:
-        raise Exception(f"Error fetching policies: {response.text}")
+    if response.status_code == 200:
+        scan_id = response.json()['scan']['id']
+        print(f'Tarama başarıyla başlatıldı. Tarama ID: {scan_id}')
+    else:
+        print('Tarama başlatma hatası:', response.content)
 
-    policies = response.json()
-    
-    # Politika adını kullanarak UUID'yi bul
-    for policy in policies.get('policies', []):
-        if policy['name'] == policy_name:  # Politika adını kontrol et
-            return policy['template_uuid']  # Burayı değiştiriyoruz
-    
-    raise KeyError("Policy UUID not found for the given policy name.")
+# Ana program
+def main():
+    headers = authenticate()
+    if headers:
+        # Hedef dosyasını oku
+        with open(target_file, 'r') as f:
+            targets = f.read().strip()
+        
+        start_scan(headers, policy_id, targets)
 
-if __name__ == "__main__":
-    # Kullanıcıdan gerekli bilgiler alınıyor
-    base_url = "https://<nessus_server_ip>:8834"  # Nessus sunucunun IP adresini buraya yaz
-    access_key = input("Access Key: ")
-    secret_key = input("Secret Key: ")
-    scan_name = input("Tarama adı: ")
-    targets = input("Hedefler (IP adresleri, virgülle ayrılmış): ")
-    policy_name = input("Politika adı: ")  # Policy ID yerine politika adı alınıyor
-
-    start_scan(base_url, access_key, secret_key, scan_name, targets, policy_name)
+if __name__ == '__main__':
+    main()

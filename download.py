@@ -54,8 +54,8 @@ if __name__ == "__main__":
     # Kullanıcıdan dosya adı girişi al
     output_name = input("Çıktı dosyasının adını girin (uzantısız): ")
 
-    # İndirilecek olan .nessus dosyasının adı
-    output_filename = "scan_result.nessus"
+    # Kullanıcıdan .nessus dosyasının adını al
+    output_filename = input(".nessus dosyasının adını girin (uzantı dahil): ")
 
     if download_nessus_file(scan_id, output_filename):
         # Scripti çağır

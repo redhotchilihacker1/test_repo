@@ -1,55 +1,72 @@
+import argparse
 import requests
 import json
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# HTTPS sertifika uyarılarını devre dışı bırak
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+def get_policy_uuid(base_url, headers, policy_id):
+    # Nessus'tan politika listesini al
+    response = requests.get(f"{base_url}/policies", headers=headers, verify=False)
+    
+    if response.status_code == 200:
+        policies = response.json()
+        print("Policies JSON:", json.dumps(policies, indent=2))  # Gelen JSON'u yazdır
+        
+        # Gelen politikalarda istenen policy_id'yi bul ve uuid'yi döndür
+        for policy in policies.get('policies', []):
+            if policy['id'] == policy_id:
+                return policy.get('uuid') or policy.get('template_uuid')  # uuid veya template_uuid'yi kontrol et
+        
+        raise KeyError("Policy UUID not found for the given policy_id.")
+    else:
+        print(f"Failed to retrieve policies: {response.status_code}")
+        return None
 
 def start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id=None):
-    # Nessus'a bağlanırken kimlik doğrulaması için gerekli header'lar
     headers = {
-        'X-ApiKeys': f'accessKey={access_key}; secretKey={secret_key}',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        "X-ApiKeys": f"accessKey={access_key}; secretKey={secret_key}",
+        "Content-Type": "application/json"
     }
     
-    # Tarama için gerekli ayarları yapılandırma
+    # Eğer policy_id verilmişse, UUID'sini alalım
+    if policy_id:
+        policy_uuid = get_policy_uuid(base_url, headers, policy_id)
+    else:
+        policy_uuid = None
+    
+    # Tarama ayarlarını yapılandır
     scan_settings = {
-        "uuid": get_policy_uuid(base_url, headers, policy_id),  # Policy UUID alınıyor
+        "uuid": policy_uuid,
         "settings": {
             "name": scan_name,
             "text_targets": targets
         }
     }
-
-    # Tarama başlatma isteği
-    response = requests.post(f'{base_url}/scans', headers=headers, json=scan_settings, verify=False)
-
+    
+    # Tarama isteğini gönder
+    response = requests.post(f"{base_url}/scans", headers=headers, json=scan_settings, verify=False)
+    
     if response.status_code == 200:
-        scan_id = response.json()['scan']['id']
-        print(f'Tarama başarıyla oluşturuldu. Tarama ID: {scan_id}')
+        scan = response.json()
+        print(f"Tarama başarıyla oluşturuldu! Scan ID: {scan['scan']['id']}")
     else:
-        print(f'Tarama oluşturulamadı. Hata kodu: {response.status_code}')
-        print(f'Hata mesajı: {response.text}')
+        print(f"Tarama oluşturulamadı. Hata kodu: {response.status_code}")
+        print("Detaylı hata mesajı:", response.json())
 
-def get_policy_uuid(base_url, headers, policy_id=None):
-    # Policy UUID almak için istek
-    response = requests.get(f'{base_url}/policies', headers=headers, verify=False)
+def main():
+    parser = argparse.ArgumentParser(description="Nessus tarama başlatma scripti.")
+    parser.add_argument("--url", required=True, help="Nessus sunucusunun URL'si. Örnek: https://nessus.local:8834")
+    parser.add_argument("--api_key", required=True, help="Nessus API Access Key")
+    parser.add_argument("--secret_key", required=True, help="Nessus API Secret Key")
+    parser.add_argument("--scan_name", required=True, help="Oluşturulacak taramanın adı")
+    parser.add_argument("--targets", required=True, help="Tarama yapılacak hedeflerin listesi (IP veya domain)")
+    parser.add_argument("--policy_id", required=False, help="Opsiyonel: Taramada kullanılacak policy ID")
 
-    if response.status_code == 200:
-        policies = response.json()['policies']
-        for policy in policies:
-            if policy_id and policy['id'] == policy_id:
-                return policy['uuid']  # Eğer policy ID verilmişse ona göre UUID döndür
-        # Eğer policy ID verilmemişse varsayılan policy UUID döndür
-        return policies[0]['uuid']
-    else:
-        print(f'Policy UUID alınamadı. Hata kodu: {response.status_code}')
-        return None
+    args = parser.parse_args()
+
+    start_scan(args.url, args.api_key, args.secret_key, args.scan_name, args.targets, args.policy_id)
 
 if __name__ == "__main__":
-    # Kullanıcıdan gerekli bilgiler alınıyor
-    base_url = "https://<nessus_server_ip>:8834"
-    access_key = input("Access Key: ")
-    secret_key = input("Secret Key: ")
-    scan_name = input("Tarama adı: ")
-    targets = input("Hedefler (IP adresleri, virgülle ayrılmış): ")
-    policy_id = input("Policy ID (opsiyonel): ") or None
-
-    start_scan(base_url, access_key, secret_key, scan_name, targets, policy_id)
+    main()

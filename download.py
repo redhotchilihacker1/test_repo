@@ -1,6 +1,10 @@
 import requests
 import os
 import subprocess
+import urllib3
+
+# SSL uyarılarını baskılamak için
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Nessus API bilgileri
 nessus_url = "https://<nessus_server_address>:8834"

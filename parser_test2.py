@@ -27,9 +27,12 @@ for nessus_file in tqdm(nessus_files, desc="Processing Nessus Files", unit="file
     
     # Verileri tutmak için liste
     data = []
-    
-    # Nessus dosyasındaki her host'u işle
-    for report_host in soup.find_all("ReportHost"):
+
+    # Nessus dosyasındaki tüm hostlar
+    report_hosts = soup.find_all("ReportHost")
+
+    # Her dosya için ayrı bir progress bar ile hostları işle
+    for report_host in tqdm(report_hosts, desc=f"Processing hosts in {nessus_file}", unit="host", leave=False):
         dns_name = report_host.get('name')
         ip_address = None
         
@@ -37,8 +40,11 @@ for nessus_file in tqdm(nessus_files, desc="Processing Nessus Files", unit="file
             if tag.get('name') == 'host-ip':
                 ip_address = tag.text
         
-        # Her host'un zafiyetlerini bul
-        for report_item in report_host.find_all("ReportItem"):
+        # Host'un zafiyetlerini bul
+        report_items = report_host.find_all("ReportItem")
+        
+        # Her host için zafiyetleri de ayrı bir progress bar ile işle
+        for report_item in tqdm(report_items, desc=f"Processing vulnerabilities for {dns_name}", unit="vuln", leave=False):
             plugin_name = report_item.get('pluginName', 'N/A')
             synopsis = report_item.find('synopsis').text if report_item.find('synopsis') else 'N/A'
             description = report_item.find('description').text if report_item.find('description') else 'N/A'

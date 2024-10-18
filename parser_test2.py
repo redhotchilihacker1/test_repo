@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from bs4 import BeautifulSoup
+from tqdm import tqdm  # Progress bar için
 
 # Nessus dosyalarının bulunduğu klasördeki tüm .nessus dosyalarını bul
 nessus_files = [f for f in os.listdir('.') if f.endswith('.nessus')]
@@ -18,7 +19,7 @@ risk_order = {
 }
 
 # Her .nessus dosyasını işle
-for nessus_file in nessus_files:
+for nessus_file in tqdm(nessus_files, desc="Processing Nessus Files", unit="file"):
     # Nessus dosyasını yükle ve BeautifulSoup ile ayrıştır
     with open(nessus_file, 'r', encoding='utf-8') as file:
         content = file.read()
